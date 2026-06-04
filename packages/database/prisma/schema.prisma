@@ -1,0 +1,485 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ==================
+// ENUMS
+// ==================
+
+enum UserRole {
+  PARTNER
+  PORTFOLIO_OPS
+  FINANCE
+  FOUNDER
+}
+
+enum Sector {
+  SAAS
+  FINTECH
+  AI
+  DEVTOOLS
+  CLIMATETECH
+  HEALTHTECH
+  MARKETPLACE
+  INFRASTRUCTURE
+  OTHER
+}
+
+enum Stage {
+  PRE_SEED
+  SEED
+  SERIES_A
+  SERIES_B
+  SERIES_C
+  GROWTH
+}
+
+enum CompanyStatus {
+  ACTIVE
+  EXITED
+  WRITTEN_OFF
+  WATCH
+}
+
+enum HealthStatus {
+  HEALTHY
+  WATCHLIST
+  AT_RISK
+}
+
+enum MetricSource {
+  FOUNDER_UPDATE
+  MANUAL
+  IMPORT
+}
+
+enum FundraisingStatus {
+  NOT_RAISING
+  EXPLORING
+  ACTIVELY_RAISING
+  TERM_SHEET
+  CLOSED
+}
+
+enum Severity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum RiskCategory {
+  BURN
+  REVENUE
+  TEAM
+  PRODUCT
+  MARKET
+  FUNDRAISING
+  OPERATIONAL
+  LEGAL
+  OTHER
+}
+
+enum RiskStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  DISMISSED
+}
+
+enum OpportunityStatus {
+  OPEN
+  ACTED_ON
+  DISMISSED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum ActionStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  DISMISSED
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+enum ReportStatus {
+  GENERATING
+  READY
+  EXPORTED
+  ARCHIVED
+}
+
+enum TrendCategory {
+  SHARED_RISK
+  HIRING_PATTERN
+  FUNDRAISING
+  GROWTH_PATTERN
+  MARKET_EVENT
+  OPERATIONAL
+}
+
+enum TrendStatus {
+  ACTIVE
+  DISMISSED
+  ACTIONED
+}
+
+enum SignalCategory {
+  FUNDING_NEWS
+  COMPETITOR_ACTIVITY
+  MARKET_TREND
+  REGULATION
+  ACQUISITION
+  IPO
+  OTHER
+}
+
+// ==================
+// MODELS
+// ==================
+
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  email     String   @unique
+  name      String
+  role      UserRole @default(PORTFOLIO_OPS)
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tasks     Task[]
+  auditLogs AuditLog[]
+
+  @@map("users")
+}
+
+model Company {
+  id              String        @id @default(cuid())
+  name            String
+  slug            String        @unique
+  logoUrl         String?
+  website         String?
+  sector          Sector
+  stage           Stage
+  country         String        @default("US")
+  foundedYear     Int?
+  description     String?
+  status          CompanyStatus @default(ACTIVE)
+  healthStatus    HealthStatus  @default(HEALTHY)
+  healthScore     Float         @default(70)
+  latestMetricsId String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  metrics          MetricSnapshot[]
+  updates          FounderUpdate[]
+  tasks            Task[]
+  signals          CompanySignal[]
+  trendEvidence    TrendEvidence[]
+  reportInclusions ReportCompany[]
+
+  @@index([sector])
+  @@index([healthStatus])
+  @@index([stage])
+  @@index([status])
+  @@map("companies")
+}
+
+model MetricSnapshot {
+  id               String       @id @default(cuid())
+  companyId        String
+  period           String
+  mrr              Float?
+  arr              Float?
+  revenueGrowthMom Float?
+  revenueGrowthYoy Float?
+  grossMargin      Float?
+  nrr              Float?
+  burnRate         Float?
+  cashBalance      Float?
+  runway           Float?
+  headcount        Int?
+  headcountChange  Int?
+  healthScore      Float?
+  source           MetricSource @default(FOUNDER_UPDATE)
+  createdAt        DateTime     @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, period])
+  @@index([companyId])
+  @@index([period])
+  @@map("metric_snapshots")
+}
+
+model FounderUpdate {
+  id                String            @id @default(cuid())
+  companyId         String
+  period            String
+  submittedById     String?
+  mrr               Float?
+  burnRate          Float?
+  cashBalance       Float?
+  runway            Float?
+  headcount         Int?
+  fundraisingStatus FundraisingStatus @default(NOT_RAISING)
+  fundraisingNote   String?
+  wins              String
+  risks             String
+  hiringNeeds       String?
+  additionalNotes   String?
+  aiSummary         String?
+  aiProcessedAt     DateTime?
+  reviewedAt        DateTime?
+  reviewedById      String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  company       Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  detectedRisks Risk[]
+  opportunities Opportunity[]
+  actions       Action[]
+
+  @@index([companyId])
+  @@index([period])
+  @@index([reviewedAt])
+  @@map("founder_updates")
+}
+
+model Risk {
+  id          String       @id @default(cuid())
+  companyId   String
+  updateId    String?
+  title       String
+  description String
+  severity    Severity     @default(MEDIUM)
+  category    RiskCategory
+  source      String?
+  status      RiskStatus   @default(OPEN)
+  resolvedAt  DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  update FounderUpdate? @relation(fields: [updateId], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([status])
+  @@index([severity])
+  @@map("risks")
+}
+
+model Opportunity {
+  id          String            @id @default(cuid())
+  companyId   String
+  updateId    String?
+  title       String
+  description String
+  category    String
+  status      OpportunityStatus @default(OPEN)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  update FounderUpdate? @relation(fields: [updateId], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@map("opportunities")
+}
+
+model Action {
+  id          String       @id @default(cuid())
+  companyId   String
+  updateId    String?
+  title       String
+  description String?
+  priority    Priority     @default(MEDIUM)
+  status      ActionStatus @default(PENDING)
+  assigneeId  String?
+  dueDate     DateTime?
+  completedAt DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  update FounderUpdate? @relation(fields: [updateId], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([status])
+  @@map("actions")
+}
+
+model Task {
+  id          String     @id @default(cuid())
+  companyId   String?
+  title       String
+  description String?
+  priority    Priority   @default(MEDIUM)
+  status      TaskStatus @default(TODO)
+  assigneeId  String?
+  createdById String
+  dueDate     DateTime?
+  completedAt DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  company  Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  assignee User?    @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([assigneeId])
+  @@index([status])
+  @@map("tasks")
+}
+
+model LPReport {
+  id                  String       @id @default(cuid())
+  title               String
+  quarter             String
+  status              ReportStatus @default(GENERATING)
+  generatedById       String
+  version             Int          @default(1)
+  markdownContent     String?
+  pdfUrl              String?
+  fundMetricsSnapshot Json?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  sections  LPReportSection[]
+  companies ReportCompany[]
+
+  @@index([quarter])
+  @@index([status])
+  @@map("lp_reports")
+}
+
+model LPReportSection {
+  id          String    @id @default(cuid())
+  reportId    String
+  title       String
+  content     String
+  order       Int
+  aiGenerated Boolean   @default(true)
+  editedAt    DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  report LPReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@map("lp_report_sections")
+}
+
+model ReportCompany {
+  reportId  String
+  companyId String
+  included  Boolean @default(true)
+
+  report  LPReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  company Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@id([reportId, companyId])
+  @@map("report_companies")
+}
+
+model TrendFinding {
+  id            String        @id @default(cuid())
+  title         String
+  summary       String
+  category      TrendCategory
+  severity      Severity      @default(MEDIUM)
+  affectedCount Int
+  detectedAt    DateTime      @default(now())
+  periodStart   DateTime
+  periodEnd     DateTime
+  status        TrendStatus   @default(ACTIVE)
+  dismissedAt   DateTime?
+  actionId      String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  evidence TrendEvidence[]
+
+  @@index([category])
+  @@index([status])
+  @@map("trend_findings")
+}
+
+model TrendEvidence {
+  id        String   @id @default(cuid())
+  trendId   String
+  companyId String
+  quote     String
+  updateId  String?
+  createdAt DateTime @default(now())
+
+  trend   TrendFinding @relation(fields: [trendId], references: [id], onDelete: Cascade)
+  company Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([trendId])
+  @@index([companyId])
+  @@map("trend_evidence")
+}
+
+model MarketSignal {
+  id          String         @id @default(cuid())
+  title       String
+  summary     String
+  url         String?
+  source      String
+  category    SignalCategory
+  publishedAt DateTime
+  relevance   Float?
+  createdAt   DateTime       @default(now())
+
+  companies CompanySignal[]
+
+  @@index([category])
+  @@index([publishedAt])
+  @@map("market_signals")
+}
+
+model CompanySignal {
+  signalId             String
+  companyId            String
+  relevanceExplanation String?
+
+  signal  MarketSignal @relation(fields: [signalId], references: [id], onDelete: Cascade)
+  company Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@id([signalId, companyId])
+  @@map("company_signals")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  entityType String
+  entityId   String
+  metadata   Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}

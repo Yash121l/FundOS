@@ -65,6 +65,19 @@ body {
 ::-webkit-scrollbar-thumb { background: oklch(0.28 0 0); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: oklch(0.36 0 0); }
 
+/* Print styles for LP report export */
+@media print {
+  body { background: white; color: black; font-family: Georgia, serif; }
+  nav, aside, header, footer, .print\:hidden { display: none !important; }
+  .print\:block { display: block !important; }
+  h1, h2, h3, h4 { color: black; }
+  table { border-collapse: collapse; width: 100%; }
+  td, th { border: 1px solid #ccc; padding: 6px 10px; font-size: 12px; }
+  blockquote { border-left: 3px solid #888; padding-left: 12px; color: #555; font-style: italic; }
+  a { color: black; text-decoration: none; }
+  @page { margin: 20mm; }
+}
+
 /* Form input utility */
 .input {
   height: 2.25rem;

@@ -1,0 +1,148 @@
+'use client'
+
+import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
+import { generateReport } from '@/lib/lp-report-actions'
+import type { CompanyForReport } from '@/lib/lp-reports'
+
+interface ReportConfigFormProps {
+  quarters: string[]
+  companies: CompanyForReport[]
+}
+
+const TONE_OPTIONS = [
+  { value: 'STANDARD', label: 'Standard', desc: 'Balanced and objective' },
+  { value: 'GROWTH_FOCUSED', label: 'Growth-Focused', desc: 'Emphasises momentum and upside' },
+  { value: 'CONSERVATIVE', label: 'Conservative', desc: 'Risk-aware, measured tone' },
+] as const
+
+const STATUS_BADGE: Record<string, string> = {
+  HEALTHY: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  WATCHLIST: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+  AT_RISK: 'bg-red-500/10 text-red-400 border-red-500/20',
+}
+
+export function ReportConfigForm({ quarters, companies }: ReportConfigFormProps) {
+  const router = useRouter()
+  const [, startTransition] = useTransition()
+  const [quarter, setQuarter] = useState(quarters[0] ?? '')
+  const [tone, setTone] = useState<'STANDARD' | 'CONSERVATIVE' | 'GROWTH_FOCUSED'>('STANDARD')
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set(companies.map((c) => c.id)))
+  const [generating, setGenerating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  function toggleCompany(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function toggleAll() {
+    if (selectedIds.size === companies.length) setSelectedIds(new Set())
+    else setSelectedIds(new Set(companies.map((c) => c.id)))
+  }
+
+  function handleGenerate() {
+    if (selectedIds.size === 0) { setError('Select at least one company.'); return }
+    setError(null)
+    setGenerating(true)
+    startTransition(async () => {
+      try {
+        const result = await generateReport({
+          quarter,
+          companyIds: [...selectedIds],
+          tone,
+        })
+        router.push(`/lp-reports/${result.reportId}`)
+      } catch {
+        setError('Report generation failed. Please try again.')
+        setGenerating(false)
+      }
+    })
+  }
+
+  return (
+    <div className="max-w-2xl space-y-6">
+      {/* Quarter */}
+      <div>
+        <label className="block text-[12px] font-medium text-muted-foreground mb-1.5">Reporting Quarter</label>
+        <select value={quarter} onChange={(e) => setQuarter(e.target.value)} className="input w-full max-w-xs">
+          {quarters.map((q) => <option key={q} value={q}>{q}</option>)}
+        </select>
+      </div>
+
+      {/* Tone */}
+      <div>
+        <label className="block text-[12px] font-medium text-muted-foreground mb-1.5">Report Tone</label>
+        <div className="flex gap-2">
+          {TONE_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setTone(opt.value)}
+              className={`flex-1 rounded-lg border px-3 py-2.5 text-left transition-colors ${
+                tone === opt.value
+                  ? 'border-ring bg-primary/10 text-foreground'
+                  : 'border-border bg-card text-muted-foreground hover:bg-secondary/50'
+              }`}
+            >
+              <p className="text-[12px] font-medium">{opt.label}</p>
+              <p className="text-[11px] opacity-70 mt-0.5">{opt.desc}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Company selector */}
+      <div>
+        <div className="flex items-center justify-between mb-1.5">
+          <label className="text-[12px] font-medium text-muted-foreground">
+            Companies ({selectedIds.size} of {companies.length} selected)
+          </label>
+          <button onClick={toggleAll} className="text-[11px] text-muted-foreground hover:text-foreground transition-colors">
+            {selectedIds.size === companies.length ? 'Deselect all' : 'Select all'}
+          </button>
+        </div>
+        <div className="rounded-xl border border-border bg-card divide-y divide-border max-h-72 overflow-y-auto">
+          {companies.map((c) => (
+            <label key={c.id} className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-secondary/30 transition-colors">
+              <input
+                type="checkbox"
+                checked={selectedIds.has(c.id)}
+                onChange={() => toggleCompany(c.id)}
+                className="accent-primary flex-shrink-0"
+              />
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-medium text-foreground truncate">{c.name}</p>
+                <p className="text-[11px] text-muted-foreground">{c.sector} · {c.stage}</p>
+              </div>
+              <span className={`text-[10px] font-semibold rounded-md border px-1.5 py-0.5 flex-shrink-0 ${STATUS_BADGE[c.healthStatus] ?? ''}`}>
+                {c.healthScore}
+              </span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {error && <p className="text-[12px] text-destructive">{error}</p>}
+
+      <button
+        onClick={handleGenerate}
+        disabled={generating || selectedIds.size === 0}
+        className="h-9 px-6 rounded-lg bg-primary text-primary-foreground text-[13px] font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
+      >
+        {generating ? 'Generating Report…' : 'Generate Report'}
+      </button>
+
+      {generating && (
+        <div className="text-[12px] text-muted-foreground space-y-1">
+          <p>⏳ Fetching portfolio data…</p>
+          <p>✍️ Generating report sections…</p>
+          <p className="text-muted-foreground/50">This takes a few seconds</p>
+        </div>
+      )}
+    </div>
+  )
+}

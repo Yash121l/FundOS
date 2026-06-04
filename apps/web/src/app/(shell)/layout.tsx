@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { auth } from '@clerk/nextjs/server'
 import { Sidebar } from '@/components/shell/sidebar'
 import { Topbar } from '@/components/shell/topbar'
+import { MobileSidebarProvider } from '@/components/shell/mobile-sidebar-context'
 import { getSidebarBadges } from '@/lib/dashboard'
 
 async function SidebarWithBadges() {
@@ -19,16 +20,18 @@ export default async function ShellLayout({ children }: { children: React.ReactN
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      <Suspense fallback={<Sidebar />}>
-        <SidebarWithBadges />
-      </Suspense>
-      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        <Topbar />
-        <main className="flex-1 overflow-y-auto">
-          {children}
-        </main>
+    <MobileSidebarProvider>
+      <div className="flex h-screen overflow-hidden bg-background">
+        <Suspense fallback={<Sidebar />}>
+          <SidebarWithBadges />
+        </Suspense>
+        <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+          <Topbar />
+          <main className="flex-1 overflow-y-auto">
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
+    </MobileSidebarProvider>
   )
 }

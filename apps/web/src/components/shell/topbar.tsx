@@ -2,8 +2,9 @@
 
 import { lazy, Suspense } from 'react'
 import { usePathname } from 'next/navigation'
-import { Search, User } from 'lucide-react'
+import { Search, User, Menu } from 'lucide-react'
 import { useCommandPalette } from '@/components/providers/command-palette-provider'
+import { useMobileSidebar } from './mobile-sidebar-context'
 
 const ClerkUserButton = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
   ? lazy(() => import('@clerk/nextjs').then((m) => ({ default: m.UserButton })))
@@ -30,11 +31,21 @@ function getTitle(path: string): string {
 export function Topbar() {
   const path = usePathname()
   const { open } = useCommandPalette()
+  const { open: openSidebar } = useMobileSidebar()
   const title = getTitle(path)
 
   return (
-    <header className="h-14 flex-shrink-0 border-b border-border bg-background/80 backdrop-blur-sm flex items-center px-5 gap-4 sticky top-0 z-10">
-      <h1 className="text-[13px] font-medium text-foreground flex-1">{title}</h1>
+    <header className="h-14 flex-shrink-0 border-b border-border bg-background/80 backdrop-blur-sm flex items-center px-4 sm:px-5 gap-3 sm:gap-4 sticky top-0 z-10">
+      {/* Hamburger — mobile only */}
+      <button
+        onClick={openSidebar}
+        aria-label="Open menu"
+        className="md:hidden h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary/70 transition-colors flex-shrink-0"
+      >
+        <Menu size={16} />
+      </button>
+
+      <h1 className="text-[13px] font-medium text-foreground flex-1 truncate">{title}</h1>
 
       <button
         onClick={open}

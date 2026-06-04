@@ -12,7 +12,7 @@ export default async function IntelligencePage({ searchParams }: Props) {
   const filter = (params.category?.toUpperCase() as SignalFilter | undefined) ?? 'ALL'
 
   const [signals, counts] = await Promise.all([
-    getSignals(filter).catch(() => []),
+    getSignals('ALL').catch(() => []),
     getSignalCounts().catch(() => ({ total: 0 })),
   ])
 

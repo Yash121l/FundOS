@@ -1,9 +1,10 @@
 import { db } from '@fundos/database'
+import type { SignalCategory } from '@fundos/types'
 
-export type SignalFilter = 'ALL' | 'FUNDING_NEWS' | 'COMPETITOR_ACTIVITY' | 'MARKET_TREND' | 'REGULATION' | 'ACQUISITION' | 'IPO'
+export type SignalFilter = 'ALL' | Exclude<SignalCategory, 'OTHER'>
 
 export async function getSignals(filter: SignalFilter = 'ALL') {
-  const where = filter === 'ALL' ? {} : { category: filter as never }
+  const where = filter === 'ALL' ? {} : { category: filter as SignalCategory }
 
   return db.marketSignal.findMany({
     where,

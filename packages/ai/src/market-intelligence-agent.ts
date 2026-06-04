@@ -2,12 +2,13 @@ import type { Company, MarketSignal } from '@fundos/types'
 
 export interface MarketIntelligenceInput {
   signal: MarketSignal
-  portfolio: Company[]
+  portfolio: Pick<Company, 'id' | 'name' | 'sector' | 'description' | 'status'>[]
 }
 
 export interface MarketIntelligenceOutput {
   relevantCompanyIds: string[]
   relevanceExplanation: string
+  perCompanyReasons: Record<string, string>
 }
 
 const SECTOR_KEYWORDS: Record<string, string[]> = {
@@ -29,34 +30,34 @@ export class MarketIntelligenceAgent {
     const text = `${signal.title} ${signal.summary}`.toLowerCase()
 
     const relevantIds: string[] = []
-    const reasons: string[] = []
+    const perCompanyReasons: Record<string, string> = {}
 
     for (const company of portfolio) {
       if (company.status !== 'ACTIVE') continue
       const result = this.isRelevant(signal.category, text, company)
       if (result.matched) {
         relevantIds.push(company.id)
-        reasons.push(result.reason)
+        perCompanyReasons[company.id] = result.reason
       }
     }
 
     const explanation = relevantIds.length > 0
-      ? `Signal relevant to ${relevantIds.length} portfolio compan${relevantIds.length === 1 ? 'y' : 'ies'}. ${reasons[0] ?? ''}`
+      ? `Signal relevant to ${relevantIds.length} portfolio compan${relevantIds.length === 1 ? 'y' : 'ies'}.`
       : `No direct portfolio relevance detected for this signal.`
 
-    return { relevantCompanyIds: relevantIds, relevanceExplanation: explanation }
+    return { relevantCompanyIds: relevantIds, relevanceExplanation: explanation, perCompanyReasons }
   }
 
   private isRelevant(
     category: string,
     text: string,
-    company: Company
+    company: Pick<Company, 'id' | 'name' | 'sector' | 'description' | 'status'>
   ): { matched: boolean; reason: string } {
     const { sector } = company
     const keywords = SECTOR_KEYWORDS[sector] ?? []
     const desc = (company.description ?? '').toLowerCase()
     const textMatchesSector = keywords.some((kw) => text.includes(kw))
-    const descMatchesText = keywords.some((kw) => desc.includes(kw) && text.includes(kw.split(' ')[0]!))
+    const descMatchesText = keywords.some((kw) => desc.includes(kw) && text.includes(kw))
 
     if (category === 'REGULATION') {
       if (REGULATION_SECTORS.has(sector) && textMatchesSector) {
@@ -86,7 +87,7 @@ export class MarketIntelligenceAgent {
       if (textMatchesSector) {
         return { matched: true, reason: `Market trend in ${sector} directly relevant to ${company.name}.` }
       }
-      if ((text.includes('ai') || text.includes('enterprise') || text.includes('saas')) &&
+      if ((/\bai\b/.test(text) || text.includes('enterprise') || text.includes('saas')) &&
           ['SAAS', 'AI', 'DEVTOOLS', 'FINTECH'].includes(sector)) {
         return { matched: true, reason: `Broad ${sector} trend relevant to ${company.name}.` }
       }

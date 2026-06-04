@@ -46,6 +46,10 @@ export function SignalFeed({ initialSignals, initialFilter, counts }: SignalFeed
     setReadIds(loadReadIds())
   }, [])
 
+  useEffect(() => {
+    setShowRead(false)
+  }, [filter])
+
   const filtered = filter === 'ALL'
     ? initialSignals
     : initialSignals.filter((s) => s.category === filter)
@@ -112,7 +116,7 @@ export function SignalFeed({ initialSignals, initialFilter, counts }: SignalFeed
       </div>
 
       {/* Signal list */}
-      {displayed.length === 0 && unread.length === 0 ? (
+      {filtered.length === 0 ? (
         <EmptyState filter={filter} />
       ) : displayed.length === 0 ? (
         <div className="text-center py-8">

@@ -16,6 +16,7 @@ export const ingestMarketSignals = task({
 
     const companies = await db.company.findMany({
       where: { status: 'ACTIVE' },
+      select: { id: true, name: true, slug: true, sector: true, description: true, status: true },
     })
 
     const agent = new MarketIntelligenceAgent()
@@ -27,22 +28,27 @@ export const ingestMarketSignals = task({
     })
 
     let enriched = 0
+    let failed = 0
     for (const signal of unlinked) {
-      const result = await agent.enrich({ signal, portfolio: companies as never })
-      if (result.relevantCompanyIds.length > 0) {
-        await db.companySignal.createMany({
-          data: result.relevantCompanyIds.map((companyId) => ({
-            signalId: signal.id,
-            companyId,
-            relevanceExplanation: result.relevanceExplanation,
-          })),
-          skipDuplicates: true,
-        })
-        enriched++
+      try {
+        const result = await agent.enrich({ signal, portfolio: companies as never })
+        if (result.relevantCompanyIds.length > 0) {
+          await db.companySignal.createMany({
+            data: result.relevantCompanyIds.map((companyId) => ({
+              signalId: signal.id,
+              companyId,
+              relevanceExplanation: result.perCompanyReasons[companyId] ?? result.relevanceExplanation,
+            })),
+            skipDuplicates: true,
+          })
+          enriched++
+        }
+      } catch {
+        failed++
       }
     }
 
-    return { processed: unlinked.length, enriched }
+    return { processed: unlinked.length, enriched, failed }
   },
 })
 

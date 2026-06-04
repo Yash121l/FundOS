@@ -1,5 +1,53 @@
 # AGENTS.md
 
+---
+
+## Session Protocol — SecondBrain
+
+This project is tracked in Yash's SecondBrain at `~/Documents/SecondBrain/`.
+
+### On every new session
+
+1. Read `~/Documents/SecondBrain/BRAIN.md` — who Yash is, active projects, preferences
+2. Read `~/Documents/SecondBrain/projects/fundos.md` — current phase, last session, open questions
+3. Tell Yash ONE line: `🧠 FundOS — [last thing done / what's next]`
+
+Then answer what Yash asked.
+
+### Log every decision
+
+Whenever a significant decision is made (architecture, library choice, pattern, trade-off), run this immediately:
+
+```bash
+echo '{
+  "title": "Short title",
+  "context": "Why this came up",
+  "options": "What else was considered",
+  "chosen": "What was decided",
+  "why": "Full reasoning",
+  "tradeoffs": "What was given up",
+  "project": "fundos"
+}' | ~/Documents/SecondBrain/hooks/log-decision.sh
+```
+
+Examples: choosing one package over another, file/folder structure, API design, deciding not to add something.
+
+### When Yash says "save" or "sync"
+
+1. Fill in the active session file (newest in `~/Documents/SecondBrain/_sessions/`):
+   - `## 🎯 Goal` — what was accomplished this session
+   - `## 📝 What Yash Should Know` — plain language summary
+2. Update `~/Documents/SecondBrain/projects/fundos.md`:
+   - Current Status (branch, phase, what changed, open items)
+   - Sessions table row for today
+   - Key Decisions — add anything new
+   - Open Questions / Next Steps
+3. Update `~/Documents/SecondBrain/BRAIN.md`:
+   - Active Projects row — update Last Worked date and Status
+   - Session Log — add today's row
+
+---
+
 ## Project Overview
 
 SignalOS is an AI-native venture intelligence and portfolio operations platform.
@@ -396,6 +444,62 @@ The system should support debugging without reproducing failures.
 
 ---
 
+## Test-Driven Development
+
+All feature work starting from Phase 6 follows TDD.
+
+Write tests before writing implementation code.
+
+The cycle is:
+
+1. Write a failing test that describes the desired behavior
+2. Write the minimum implementation to make it pass
+3. Refactor, then confirm tests still pass
+
+### What to test
+
+* All pure functions in packages/analytics and packages/shared
+* All UI components in packages/ui
+* All API route handlers in apps/api
+* All service layer functions in apps/api/src/services
+* All repository functions in apps/api/src/repositories
+
+### Test runner
+
+Framework: Vitest
+
+Node packages use environment: node
+
+React packages use environment: jsdom with @testing-library/react
+
+Run all tests:
+
+pnpm test
+
+Run tests for a single package:
+
+pnpm --filter @fundos/analytics test
+
+Run tests in watch mode:
+
+pnpm --filter @fundos/analytics test:watch
+
+### Test file placement
+
+Co-locate tests with source files:
+
+packages/analytics/src/__tests__/health-score.test.ts
+packages/shared/src/__tests__/formatting.test.ts
+packages/ui/src/__tests__/button.test.tsx
+
+### What not to test
+
+* Server Components that require a running database
+* Prisma queries in apps/web/src/lib — these are integration tests that require a real database
+* Next.js routing and middleware — test via E2E (Phase 9)
+
+---
+
 ## Definition of Done
 
 Before any task is considered complete:
@@ -412,12 +516,17 @@ pnpm build
 
 must pass
 
+pnpm test
+
+must pass
+
 Additionally:
 
 * No TypeScript errors
 * No accessibility violations
 * No duplicate logic
 * No console errors
+* Tests written before implementation for all new pure functions and components
 
 ---
 

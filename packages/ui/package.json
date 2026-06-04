@@ -9,6 +9,8 @@
     "./globals.css": "./src/globals.css"
   },
   "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",
     "clean": "rm -rf dist"
@@ -26,8 +28,13 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "typescript": "^5.8.2"
+    "jsdom": "^29.1.1",
+    "typescript": "^5.8.2",
+    "vitest": "^4.1.8"
   }
 }

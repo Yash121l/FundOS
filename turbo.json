@@ -18,6 +18,11 @@
       "dependsOn": ["^typecheck"],
       "outputs": []
     },
+    "test": {
+      "dependsOn": ["^build"],
+      "outputs": [],
+      "cache": false
+    },
     "clean": {
       "cache": false
     },

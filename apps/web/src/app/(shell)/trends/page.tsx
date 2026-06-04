@@ -1,44 +1,38 @@
-import { Skeleton } from '@fundos/ui'
+import { getTrendsForPage, getTrendCounts, type TrendFilter } from '@/lib/trends'
+import { TrendsList } from '@/components/trends/trends-list'
 
-export default function TrendsPage() {
+export const dynamic = 'force-dynamic'
+
+interface Props {
+  searchParams: Promise<{ category?: string }>
+}
+
+export default async function TrendsPage({ searchParams }: Props) {
+  const params = await searchParams
+  const filter = (params.category?.toUpperCase() as TrendFilter | undefined) ?? 'ALL'
+
+  const [trends, counts] = await Promise.all([
+    getTrendsForPage(filter).catch(() => []),
+    getTrendCounts().catch(() => ({ active: 0, dismissed: 0 })),
+  ])
+
   return (
-    <div className="p-6 space-y-4 max-w-3xl">
-      <div className="grid grid-cols-2 gap-3 mb-2">
-        {['All', 'Shared Risk', 'Hiring', 'Fundraising', 'Growth'].map((f) => (
-          <span key={f} className="hidden" />
-        ))}
-        <Skeleton className="h-8 w-full col-span-1 rounded-lg" />
-        <Skeleton className="h-8 w-full col-span-1 rounded-lg" />
+    <div className="p-5 max-w-3xl">
+      {/* Header */}
+      <div className="flex items-start justify-between mb-5">
+        <div>
+          <h1 className="text-[15px] font-semibold text-foreground">Trend Detection</h1>
+          <p className="text-[12px] text-muted-foreground mt-0.5">
+            Cross-portfolio patterns from founder updates
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="text-[22px] font-semibold tabular-nums text-foreground leading-none">{counts.active}</p>
+          <p className="text-[11px] text-muted-foreground">active trend{counts.active !== 1 ? 's' : ''}</p>
+        </div>
       </div>
 
-      {[4, 3, 3, 4, 3].map((companies, i) => (
-        <div key={i} className="rounded-lg border border-border bg-card p-4 space-y-3">
-          <div className="flex items-start justify-between gap-3">
-            <div className="space-y-1.5 flex-1">
-              <Skeleton className="h-4 w-72" />
-              <Skeleton className="h-3.5 w-full max-w-lg" />
-              <Skeleton className="h-3 w-48" />
-            </div>
-            <div className="flex-shrink-0 space-y-1.5 text-right">
-              <Skeleton className="h-5 w-20 rounded-md" />
-              <p className="text-[11px] text-muted-foreground">{companies} companies</p>
-            </div>
-          </div>
-          <div className="flex gap-1.5">
-            {Array.from({ length: companies }).map((_, j) => (
-              <Skeleton key={j} className="h-5 w-20 rounded-full" />
-            ))}
-          </div>
-          <div className="flex gap-2 pt-1">
-            <Skeleton className="h-7 w-28 rounded-md" />
-            <Skeleton className="h-7 w-28 rounded-md" />
-          </div>
-        </div>
-      ))}
-
-      <p className="text-center text-[12px] text-muted-foreground/50 pt-2">
-        Trend Detection — Phase 7
-      </p>
+      <TrendsList initialTrends={trends} initialFilter={filter} />
     </div>
   )
 }

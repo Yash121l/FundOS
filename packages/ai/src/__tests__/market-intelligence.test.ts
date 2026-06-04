@@ -1,6 +1,16 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+vi.mock('../client', () => ({
+  getOpenAIClient: vi.fn(() => null),
+  MODEL_FAST: 'gpt-4o-mini',
+  MODEL_SMART: 'gpt-4o',
+}))
+
 import { MarketIntelligenceAgent } from '../market-intelligence-agent'
+import { getOpenAIClient } from '../client'
 import type { MarketSignal, Company } from '@fundos/types'
+
+const mockGetClient = vi.mocked(getOpenAIClient)
 
 function makeSignal(overrides: Partial<MarketSignal> & Pick<MarketSignal, 'title' | 'summary' | 'category'>): MarketSignal {
   return {
@@ -45,6 +55,10 @@ const portfolio: Company[] = [
 
 describe('MarketIntelligenceAgent', () => {
   const agent = new MarketIntelligenceAgent()
+
+  beforeEach(() => {
+    mockGetClient.mockReturnValue(null) // rule-based path by default
+  })
 
   it('matches FUNDING_NEWS signal to companies in the same sector', async () => {
     const signal = makeSignal({
@@ -110,5 +124,79 @@ describe('MarketIntelligenceAgent', () => {
     })
     const result = await agent.enrich({ signal, portfolio })
     expect(result.relevantCompanyIds.length).toBeGreaterThan(0)
+  })
+})
+
+// ── Phase 10: AI semantic matching ───────────────────────────
+
+describe('MarketIntelligenceAgent — Phase 10 AI path', () => {
+  const agent = new MarketIntelligenceAgent()
+
+  it('uses company names from AI response to resolve IDs', async () => {
+    const createSpy = vi.fn().mockResolvedValue({
+      choices: [{
+        message: {
+          content: JSON.stringify({
+            relevantCompanies: [
+              { name: 'FinCo', reason: 'Directly competes in the embedded finance space.' },
+              { name: 'HealthAI', reason: 'Regulatory AI requirements apply to its clinical AI product.' },
+            ],
+          }),
+        },
+      }],
+    })
+    mockGetClient.mockReturnValue({ chat: { completions: { create: createSpy } } } as never)
+
+    const signal = makeSignal({ title: 'AI Regulation Act passes', summary: 'New rules for AI in finance and healthcare.', category: 'REGULATION' })
+    const result = await agent.enrich({ signal, portfolio })
+
+    expect(result.relevantCompanyIds).toContain('c1') // FinCo
+    expect(result.relevantCompanyIds).toContain('c2') // HealthAI
+    expect(result.perCompanyReasons['c1']).toContain('embedded finance')
+  })
+
+  it('ignores company names from AI that do not match the portfolio', async () => {
+    const createSpy = vi.fn().mockResolvedValue({
+      choices: [{
+        message: {
+          content: JSON.stringify({
+            relevantCompanies: [{ name: 'GhostCorp', reason: 'Relevant.' }], // not in portfolio
+          }),
+        },
+      }],
+    })
+    mockGetClient.mockReturnValue({ chat: { completions: { create: createSpy } } } as never)
+
+    const signal = makeSignal({ title: 'Unknown event', summary: 'Nothing specific.', category: 'OTHER' })
+    const result = await agent.enrich({ signal, portfolio })
+    expect(result.relevantCompanyIds).toHaveLength(0)
+  })
+
+  it('falls back to keyword matching when AI throws', async () => {
+    const createSpy = vi.fn().mockRejectedValue(new Error('API error'))
+    mockGetClient.mockReturnValue({ chat: { completions: { create: createSpy } } } as never)
+
+    const signal = makeSignal({
+      title: 'Major fintech funding round',
+      summary: 'A leading fintech payments company raised $150M.',
+      category: 'FUNDING_NEWS',
+    })
+    const result = await agent.enrich({ signal, portfolio })
+    // Keyword fallback picks up FINTECH sector → c1
+    expect(result.relevantCompanyIds).toContain('c1')
+  })
+
+  it('passes the signal title and summary to OpenAI', async () => {
+    const createSpy = vi.fn().mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify({ relevantCompanies: [] }) } }],
+    })
+    mockGetClient.mockReturnValue({ chat: { completions: { create: createSpy } } } as never)
+
+    const signal = makeSignal({ title: 'Unique test signal XYZ', summary: 'A unique summary for testing.', category: 'MARKET_TREND' })
+    await agent.enrich({ signal, portfolio })
+
+    const userMsg = (createSpy.mock.calls[0]![0] as { messages: Array<{ role: string; content: string }> }).messages[1]!.content
+    expect(userMsg).toContain('Unique test signal XYZ')
+    expect(userMsg).toContain('A unique summary for testing.')
   })
 })

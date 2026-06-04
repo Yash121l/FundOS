@@ -72,6 +72,7 @@ export async function getUpdatesForTrendDetection(daysBack = 90) {
       hiringNeeds: true,
       additionalNotes: true,
       aiSummary: true,
+      founderTone: true,
       aiProcessedAt: true,
       reviewedAt: true,
       reviewedById: true,

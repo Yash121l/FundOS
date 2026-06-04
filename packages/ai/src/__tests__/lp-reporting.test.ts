@@ -1,6 +1,16 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+vi.mock('../client', () => ({
+  getOpenAIClient: vi.fn(() => null),
+  MODEL_FAST: 'gpt-4o-mini',
+  MODEL_SMART: 'gpt-4o',
+}))
+
 import { LPReportingAgent } from '../lp-reporting-agent'
+import { getOpenAIClient } from '../client'
 import type { LPReportInput, CompanyWithMetrics, FundAggregates } from '@fundos/types'
+
+const mockGetClient = vi.mocked(getOpenAIClient)
 
 function makeCompany(overrides: { id: string; name: string; healthStatus?: string; mrr?: number; growth?: number }): CompanyWithMetrics {
   return {
@@ -70,6 +80,10 @@ const baseInput: LPReportInput = {
 describe('LPReportingAgent', () => {
   const agent = new LPReportingAgent()
 
+  beforeEach(() => {
+    mockGetClient.mockReturnValue(null) // rule-based by default
+  })
+
   it('generates exactly 5 sections in the correct order', async () => {
     const result = await agent.generate(baseInput)
     expect(result.sections).toHaveLength(5)
@@ -136,5 +150,77 @@ describe('LPReportingAgent', () => {
     const conservativeInput = { ...baseInput, tone: 'CONSERVATIVE' as const }
     const result = await agent.generate(conservativeInput)
     expect(result.sections).toHaveLength(5)
+  })
+})
+
+// ── Phase 10: AI prose generation ────────────────────────────
+
+describe('LPReportingAgent — Phase 10 AI path', () => {
+  const agent = new LPReportingAgent()
+
+  it('uses AI content when OpenAI returns non-empty strings', async () => {
+    const sectionContents = [
+      'Executive summary written by GPT-4o.',
+      'Portfolio highlights — AlphaOps led the quarter.',
+      'Portfolio risks — DeltaAI remains at risk.',
+      'Fund metrics — burn multiple improved.',
+      '| Company | Sector |\n|---------|--------|\n| AlphaOps | SaaS |',
+    ]
+    let callCount = 0
+    const createSpy = vi.fn().mockImplementation(() => {
+      const content = sectionContents[callCount++] ?? ''
+      return Promise.resolve({ choices: [{ message: { content } }] })
+    })
+    mockGetClient.mockReturnValue({ chat: { completions: { create: createSpy } } } as never)
+
+    const result = await agent.generate(baseInput)
+    expect(result.sections).toHaveLength(5)
+    expect(result.sections[0]!.content).toContain('GPT-4o')
+    expect(result.sections[1]!.content).toContain('AlphaOps')
+  })
+
+  it('falls back to rule-based section when AI returns empty content', async () => {
+    const createSpy = vi.fn().mockResolvedValue({ choices: [{ message: { content: '' } }] })
+    mockGetClient.mockReturnValue({ chat: { completions: { create: createSpy } } } as never)
+
+    const result = await agent.generate(baseInput)
+    // Rule-based fallback kicks in for empty sections
+    expect(result.sections[0]!.content.length).toBeGreaterThan(50)
+    expect(result.sections[0]!.content).toContain('2026-Q2')
+  })
+
+  it('falls back entirely to rule-based when OpenAI throws', async () => {
+    const createSpy = vi.fn().mockRejectedValue(new Error('API unavailable'))
+    mockGetClient.mockReturnValue({ chat: { completions: { create: createSpy } } } as never)
+
+    const result = await agent.generate(baseInput)
+    expect(result.sections).toHaveLength(5)
+    // Rule-based output contains expected structure
+    expect(result.sections[0]!.content).toContain('2026-Q2')
+    expect(result.sections[4]!.content).toContain('AlphaOps')
+  })
+
+  it('makes exactly 5 parallel OpenAI calls — one per section', async () => {
+    const createSpy = vi.fn().mockResolvedValue({
+      choices: [{ message: { content: 'Section content here with more than 20 chars.' } }],
+    })
+    mockGetClient.mockReturnValue({ chat: { completions: { create: createSpy } } } as never)
+
+    await agent.generate(baseInput)
+    expect(createSpy).toHaveBeenCalledTimes(5)
+  })
+
+  it('passes system prompt as first message to every section call', async () => {
+    const createSpy = vi.fn().mockResolvedValue({
+      choices: [{ message: { content: 'Section content here with more than 20 chars.' } }],
+    })
+    mockGetClient.mockReturnValue({ chat: { completions: { create: createSpy } } } as never)
+
+    await agent.generate(baseInput)
+    for (const call of createSpy.mock.calls) {
+      const messages = (call[0] as { messages: Array<{ role: string }> }).messages
+      expect(messages[0]!.role).toBe('system')
+      expect(messages[1]!.role).toBe('user')
+    }
   })
 })

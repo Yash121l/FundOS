@@ -19,7 +19,13 @@ type ActionOut = PortfolioAnalystOutput['suggestedActions'][number]
 const SYSTEM_PROMPT = `You are a senior portfolio analyst at a top-tier venture capital firm.
 You analyze founder updates to assess company health, detect risks, and surface opportunities.
 Be specific, data-driven, and actionable. Write for an experienced VC partner audience.
-Always respond with valid JSON matching the schema provided — no markdown fences, no preamble.`
+Always respond with valid JSON matching the schema provided — no markdown fences, no preamble.
+
+Tone classification criteria:
+- confident: Founder leads with wins, uses assertive language, metrics are on track, no hedging.
+- cautious: Founder acknowledges challenges, uses qualifying language ("we expect", "we're monitoring"), some uncertainty present.
+- distressed: Founder flags urgent problems, uses language suggesting stress (burn, churn, team issues), asks for help.
+- uncertain: Founder is vague, avoids committing to metrics or direction, mixed signals throughout.`
 
 export class PortfolioAnalyst {
   async analyze(input: PortfolioAnalystInput): Promise<PortfolioAnalystOutput> {

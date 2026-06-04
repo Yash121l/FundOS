@@ -151,6 +151,7 @@ export interface FounderUpdate {
   hiringNeeds: string | null
   additionalNotes: string | null
   aiSummary: string | null
+  founderTone: string | null
   aiProcessedAt: Date | null
   reviewedAt: Date | null
   reviewedById: string | null

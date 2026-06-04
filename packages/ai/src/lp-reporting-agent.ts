@@ -64,6 +64,14 @@ Portfolio Health: ${healthy.length} Healthy / ${watchlist.length} Watchlist / ${
 
     const toneNote = toneInstruction(tone)
 
+    const sectionTokens: Record<string, number> = {
+      'Executive Summary': 600,
+      'Portfolio Highlights': 700,
+      'Portfolio Risks': 600,
+      'Fund Metrics': 600,
+      'Company Appendix': 1500, // large table needs room
+    }
+
     const sectionPrompts: Array<{ title: string; order: number; prompt: string }> = [
       {
         title: 'Executive Summary',
@@ -141,8 +149,8 @@ ${companyRows}`,
               { role: 'system', content: SYSTEM_PROMPT },
               { role: 'user', content: s.prompt },
             ],
-            temperature: 0.5,
-            max_tokens: 800,
+            temperature: 0.4,
+            max_tokens: sectionTokens[s.title] ?? 700,
           })
           return {
             title: s.title,

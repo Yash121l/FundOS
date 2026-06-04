@@ -1,6 +1,16 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+vi.mock('../client', () => ({
+  getOpenAIClient: vi.fn(() => null),
+  MODEL_FAST: 'gpt-4o-mini',
+  MODEL_SMART: 'gpt-4o',
+}))
+
 import { TrendDetectionAgent } from '../trend-detection-agent'
+import { getOpenAIClient } from '../client'
 import type { TrendDetectionInput } from '@fundos/types'
+
+const mockGetClient = vi.mocked(getOpenAIClient)
 
 function makeUpdate(overrides: {
   id: string
@@ -32,6 +42,7 @@ function makeUpdate(overrides: {
     hiringNeeds: overrides.hiringNeeds ?? null,
     additionalNotes: null,
     aiSummary: null,
+    founderTone: null,
     aiProcessedAt: null,
     reviewedAt: null,
     reviewedById: null,
@@ -47,6 +58,10 @@ function makeUpdate(overrides: {
 
 describe('TrendDetectionAgent', () => {
   const agent = new TrendDetectionAgent()
+
+  beforeEach(() => {
+    mockGetClient.mockReturnValue(null) // rule-based path by default
+  })
 
   it('returns empty findings when fewer than 3 updates provided', async () => {
     const input: TrendDetectionInput = {
@@ -161,5 +176,83 @@ describe('TrendDetectionAgent', () => {
     const categories = result.findings.map((f) => f.category)
     expect(categories).toContain('SHARED_RISK')
     expect(categories).toContain('FUNDRAISING')
+  })
+})
+
+// ── Phase 10: AI narrative enhancement ───────────────────────
+
+describe('TrendDetectionAgent — Phase 10 AI enhancement', () => {
+  const agent = new TrendDetectionAgent()
+  const burnInput: TrendDetectionInput = {
+    updates: [
+      makeUpdate({ id: 'u1', companyId: 'c1', companyName: 'Alpha', runway: 5 }),
+      makeUpdate({ id: 'u2', companyId: 'c2', companyName: 'Beta', runway: 8 }),
+      makeUpdate({ id: 'u3', companyId: 'c3', companyName: 'Gamma', runway: 10 }),
+    ],
+    metricsHistory: [],
+  }
+
+  it('confidenceScore and recommendedAction are undefined without OpenAI key', async () => {
+    mockGetClient.mockReturnValue(null)
+    const result = await agent.detect(burnInput)
+    for (const f of result.findings) {
+      expect(f.confidenceScore).toBeUndefined()
+      expect(f.recommendedAction).toBeUndefined()
+    }
+  })
+
+  it('enriches findings with confidenceScore and recommendedAction when AI available', async () => {
+    const createSpy = vi.fn().mockResolvedValue({
+      choices: [{
+        message: {
+          content: JSON.stringify({
+            summary: 'Three portfolio companies are at critical runway risk requiring immediate action.',
+            recommendedAction: 'Convene an emergency LP call and coordinate bridge financing across the three companies.',
+            confidenceScore: 0.91,
+          }),
+        },
+      }],
+    })
+    mockGetClient.mockReturnValue({ chat: { completions: { create: createSpy } } } as never)
+
+    const result = await agent.detect(burnInput)
+    const burnFinding = result.findings.find((f) => f.category === 'SHARED_RISK')
+    expect(burnFinding).toBeDefined()
+    expect(burnFinding!.confidenceScore).toBe(0.91)
+    expect(burnFinding!.recommendedAction).toContain('bridge financing')
+  })
+
+  it('replaces the template summary with the AI-written one', async () => {
+    const aiSummary = 'Three portfolio companies are at critical runway risk requiring immediate action.'
+    const createSpy = vi.fn().mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify({ summary: aiSummary, recommendedAction: 'Act fast.', confidenceScore: 0.85 }) } }],
+    })
+    mockGetClient.mockReturnValue({ chat: { completions: { create: createSpy } } } as never)
+
+    const result = await agent.detect(burnInput)
+    const burnFinding = result.findings.find((f) => f.category === 'SHARED_RISK')
+    expect(burnFinding!.summary).toBe(aiSummary)
+  })
+
+  it('clamps confidenceScore to [0, 1] even if model returns out-of-range value', async () => {
+    const createSpy = vi.fn().mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify({ summary: 'Summary.', recommendedAction: 'Do it.', confidenceScore: 1.8 }) } }],
+    })
+    mockGetClient.mockReturnValue({ chat: { completions: { create: createSpy } } } as never)
+
+    const result = await agent.detect(burnInput)
+    const finding = result.findings[0]!
+    expect(finding.confidenceScore).toBeLessThanOrEqual(1)
+  })
+
+  it('preserves original finding when AI call throws', async () => {
+    const createSpy = vi.fn().mockRejectedValue(new Error('timeout'))
+    mockGetClient.mockReturnValue({ chat: { completions: { create: createSpy } } } as never)
+
+    const result = await agent.detect(burnInput)
+    const burnFinding = result.findings.find((f) => f.category === 'SHARED_RISK')
+    expect(burnFinding).toBeDefined()
+    expect(burnFinding!.summary).toBeTruthy() // template summary preserved
+    expect(burnFinding!.confidenceScore).toBeUndefined()
   })
 })

@@ -39,7 +39,7 @@ export function HealthDonutChart({ data }: Props) {
     <div className="rounded-xl border border-border bg-card p-4">
       <p className="text-[13px] font-medium mb-3">Portfolio Health</p>
 
-      <div className="relative">
+      <div className="relative" role="img" aria-label="Portfolio Health pie chart showing company distribution by health status">
         <ResponsiveContainer width="100%" height={140}>
           <PieChart>
             <Pie

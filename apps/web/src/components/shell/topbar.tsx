@@ -1,15 +1,13 @@
 'use client'
 
+import { lazy, Suspense } from 'react'
 import { usePathname } from 'next/navigation'
 import { Search, User } from 'lucide-react'
 import { useCommandPalette } from '@/components/providers/command-palette-provider'
 
-// Lazy-loaded only when Clerk key is present
-let ClerkUserButton: React.ComponentType<{ appearance?: object }> | null = null
-if (process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  ClerkUserButton = require('@clerk/nextjs').UserButton
-}
+const ClerkUserButton = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+  ? lazy(() => import('@clerk/nextjs').then((m) => ({ default: m.UserButton })))
+  : null
 
 const TITLES: Record<string, string> = {
   '/': 'Dashboard',
@@ -40,6 +38,7 @@ export function Topbar() {
 
       <button
         onClick={open}
+        aria-label="Open search"
         className="flex items-center gap-2 h-8 pl-2.5 pr-2 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:border-border/80 hover:bg-secondary/60 transition-colors text-[12px]"
       >
         <Search size={13} />
@@ -51,7 +50,9 @@ export function Topbar() {
 
       <div className="flex-shrink-0">
         {ClerkUserButton ? (
-          <ClerkUserButton appearance={{ elements: { avatarBox: 'w-7 h-7' } }} />
+          <Suspense fallback={<div className="h-7 w-7 rounded-full bg-secondary border border-border" />}>
+            <ClerkUserButton appearance={{ elements: { avatarBox: 'w-7 h-7' } }} />
+          </Suspense>
         ) : (
           <div className="h-7 w-7 rounded-full bg-secondary border border-border flex items-center justify-center">
             <User size={13} className="text-muted-foreground" />

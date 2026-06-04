@@ -1,14 +1,10 @@
 import { db } from '@fundos/database'
-
-function currentPeriod(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-}
+import { currentPeriod, previousPeriod } from '@fundos/shared'
 
 function periodMonthsAgo(n: number): string {
-  const d = new Date()
-  d.setMonth(d.getMonth() - n)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  let p = currentPeriod()
+  for (let i = 0; i < n; i++) p = previousPeriod(p)
+  return p
 }
 
 // ── Health counts ────────────────────────────────────────────
@@ -164,7 +160,6 @@ export type ActiveTrend = Awaited<ReturnType<typeof getActiveTrends>>[number]
 
 // ── Recent alerts ─────────────────────────────────────────────
 // Alerts = recently created HIGH/CRITICAL risks (last 14 days)
-// + companies whose healthStatus recently changed to AT_RISK
 
 export async function getRecentAlerts(limit = 6) {
   const since = new Date()

@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { getAllCompanies } from '@/lib/portfolio'
 import { PortfolioTable } from '@/components/portfolio/portfolio-table'
 
@@ -7,13 +8,19 @@ interface Props {
   searchParams: Promise<{ health?: string }>
 }
 
+async function PortfolioTableLoader({ health }: { health: string }) {
+  const companies = await getAllCompanies()
+  return <PortfolioTable data={companies} initialHealth={health} />
+}
+
 export default async function PortfolioPage({ searchParams }: Props) {
   const params = await searchParams
-  const [companies] = await Promise.all([getAllCompanies()])
 
   return (
     <div className="p-5">
-      <PortfolioTable data={companies} initialHealth={params.health ?? ''} />
+      <Suspense fallback={<div className="text-[13px] text-muted-foreground p-4">Loading portfolio…</div>}>
+        <PortfolioTableLoader health={params.health ?? ''} />
+      </Suspense>
     </div>
   )
 }

@@ -56,7 +56,7 @@ export function UpdateCard({ update, isActive, onClick, onMarkReviewed }: Update
       </div>
 
       {/* Metrics row */}
-      <div className="grid grid-cols-4 gap-3 mb-2.5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-2.5">
         {[
           { label: 'MRR', value: formatMrr(update.mrr) },
           { label: 'Burn', value: update.burnRate ? formatCurrency(update.burnRate, true) : '—' },

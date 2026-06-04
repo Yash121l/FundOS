@@ -23,6 +23,7 @@ export function ReviewSheet({ update, onClose, onMarkReviewed }: ReviewSheetProp
   const [taskTitle, setTaskTitle] = useState('')
   const [taskDesc, setTaskDesc] = useState('')
   const [taskCreated, setTaskCreated] = useState(false)
+  const [taskError, setTaskError] = useState('')
   const [, startTransition] = useTransition()
 
   useEffect(() => {
@@ -31,6 +32,7 @@ export function ReviewSheet({ update, onClose, onMarkReviewed }: ReviewSheetProp
     setTaskTitle('')
     setTaskDesc('')
     setTaskCreated(false)
+    setTaskError('')
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (showTaskForm) { setShowTaskForm(false); return }
@@ -46,12 +48,18 @@ export function ReviewSheet({ update, onClose, onMarkReviewed }: ReviewSheetProp
 
   function handleCreateTask() {
     if (!taskTitle.trim() || !update) return
+    setTaskError('')
     startTransition(async () => {
-      await createTaskFromUpdate(update.company.id, taskTitle.trim(), taskDesc.trim())
-      setTaskCreated(true)
-      setShowTaskForm(false)
-      setTaskTitle('')
-      setTaskDesc('')
+      try {
+        await createTaskFromUpdate(update.company.id, taskTitle.trim(), taskDesc.trim())
+        setTaskCreated(true)
+        setShowTaskForm(false)
+        setTaskTitle('')
+        setTaskDesc('')
+      } catch (err) {
+        console.error('[handleCreateTask] failed', err)
+        setTaskError('Failed to create task. Please try again.')
+      }
     })
   }
 
@@ -216,6 +224,7 @@ export function ReviewSheet({ update, onClose, onMarkReviewed }: ReviewSheetProp
               onChange={(e) => setTaskDesc(e.target.value)}
               className="input w-full resize-none"
             />
+            {taskError && <p className="text-[11px] text-red-400">{taskError}</p>}
             <div className="flex gap-2">
               <button onClick={handleCreateTask} className="h-7 px-3 rounded-md bg-primary text-primary-foreground text-[11px] font-medium hover:bg-primary/90 transition-colors">
                 Create Task

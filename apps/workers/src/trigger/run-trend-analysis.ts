@@ -1,7 +1,7 @@
 import { task, schedules } from '@trigger.dev/sdk/v3'
 import { db } from '@fundos/database'
-import { TrendDetectionAgent } from '@fundos/ai'
-import { writeAIAuditLog } from '@fundos/ai'
+import { TrendDetectionAgent, writeAIAuditLog } from '@fundos/ai'
+import type { TrendDetectionInput } from '@fundos/types'
 
 // Runs daily at 2am UTC, or after every 5th founder update
 export const runTrendAnalysis = task({
@@ -30,7 +30,10 @@ export const runTrendAnalysis = task({
     // 2. Run TrendDetectionAgent
     const startedAt = Date.now()
     const agent = new TrendDetectionAgent()
-    const result = await agent.detect({ updates: updates as never, metricsHistory: metricsHistory as never })
+    const result = await agent.detect({
+      updates: updates as unknown as TrendDetectionInput['updates'],
+      metricsHistory: metricsHistory as unknown as TrendDetectionInput['metricsHistory'],
+    })
     const duration = Date.now() - startedAt
 
     await writeAIAuditLog({
@@ -50,15 +53,11 @@ export const runTrendAnalysis = task({
     const periodStart = new Date(since)
     let upserted = 0
 
-    // 3. Upsert findings — skip duplicates by title
+    // 3. Upsert findings — idempotent by (title, periodStart) unique constraint
     for (const finding of result.findings) {
-      const existing = await db.trendFinding.findFirst({
-        where: { title: finding.title, status: 'ACTIVE' },
-      })
-      if (existing) continue
-
-      const trend = await db.trendFinding.create({
-        data: {
+      const trend = await db.trendFinding.upsert({
+        where: { title_periodStart: { title: finding.title, periodStart } },
+        create: {
           title: finding.title,
           summary: finding.summary,
           category: finding.category,
@@ -68,6 +67,12 @@ export const runTrendAnalysis = task({
           periodStart,
           periodEnd: now,
           status: 'ACTIVE',
+        },
+        update: {
+          summary: finding.summary,
+          severity: finding.severity,
+          affectedCount: finding.evidence.length,
+          periodEnd: now,
         },
       })
 
@@ -79,6 +84,7 @@ export const runTrendAnalysis = task({
             quote: ev.quote,
             updateId: ev.updateId ?? null,
           })),
+          skipDuplicates: true,
         })
       }
       upserted++

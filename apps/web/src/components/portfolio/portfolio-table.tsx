@@ -256,14 +256,18 @@ export function PortfolioTable({ data, initialHealth = '' }: Props) {
     <div className="space-y-3">
       {/* Filter bar */}
       <div className="flex items-center gap-2 flex-wrap">
+        <label htmlFor="portfolio-search" className="sr-only">Search companies</label>
         <input
+          id="portfolio-search"
           type="text"
           placeholder="Search companies..."
           value={filters.search}
           onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
           className="h-8 w-52 rounded-lg border border-border bg-card px-3 text-[13px] placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
         />
+        <label htmlFor="portfolio-sector" className="sr-only">Filter by sector</label>
         <select
+          id="portfolio-sector"
           value={filters.sector}
           onChange={(e) => setFilters((f) => ({ ...f, sector: e.target.value }))}
           className="h-8 rounded-lg border border-border bg-card px-2 text-[13px] text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
@@ -273,7 +277,9 @@ export function PortfolioTable({ data, initialHealth = '' }: Props) {
             <option key={s} value={s}>{s}</option>
           ))}
         </select>
+        <label htmlFor="portfolio-stage" className="sr-only">Filter by stage</label>
         <select
+          id="portfolio-stage"
           value={filters.stage}
           onChange={(e) => setFilters((f) => ({ ...f, stage: e.target.value }))}
           className="h-8 rounded-lg border border-border bg-card px-2 text-[13px] text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
@@ -283,7 +289,9 @@ export function PortfolioTable({ data, initialHealth = '' }: Props) {
             <option key={s} value={s}>{stageLabel(s)}</option>
           ))}
         </select>
+        <label htmlFor="portfolio-health" className="sr-only">Filter by health status</label>
         <select
+          id="portfolio-health"
           value={filters.health}
           onChange={(e) => setFilters((f) => ({ ...f, health: e.target.value }))}
           className="h-8 rounded-lg border border-border bg-card px-2 text-[13px] text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"

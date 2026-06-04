@@ -39,20 +39,35 @@ export function TrendCard({ trend, onDismissed }: TrendCardProps) {
 
   function handleDismiss() {
     startTransition(async () => {
-      await dismissTrend(trend.id)
-      onDismissed(trend.id)
+      try {
+        await dismissTrend(trend.id)
+        onDismissed(trend.id)
+      } catch (err) {
+        console.error('[TrendCard] Failed to dismiss trend:', err)
+        setActionResult('Failed to dismiss. Please try again.')
+        setTimeout(() => setActionResult(null), 4000)
+      }
     })
   }
 
   function handleCreateAction() {
     if (!actionTitle.trim()) return
     startTransition(async () => {
-      const result = await createActionFromTrend(trend.id, actionTitle.trim(), actionDesc.trim())
-      if (result.success) {
-        setActionResult(`Action created for ${result.actionsCreated} compan${result.actionsCreated === 1 ? 'y' : 'ies'}`)
-        setShowActionForm(false)
-        setActionTitle('')
-        setActionDesc('')
+      try {
+        const result = await createActionFromTrend(trend.id, actionTitle.trim(), actionDesc.trim())
+        if (result.success) {
+          setActionResult(`Action created for ${result.actionsCreated} compan${result.actionsCreated === 1 ? 'y' : 'ies'}`)
+          setShowActionForm(false)
+          setActionTitle('')
+          setActionDesc('')
+          setTimeout(() => setActionResult(null), 4000)
+        } else {
+          setActionResult(result.error ?? 'Failed to create action.')
+          setTimeout(() => setActionResult(null), 4000)
+        }
+      } catch (err) {
+        console.error('[TrendCard] Failed to create trend action:', err)
+        setActionResult('Failed to create action. Please try again.')
         setTimeout(() => setActionResult(null), 4000)
       }
     })
@@ -134,7 +149,9 @@ export function TrendCard({ trend, onDismissed }: TrendCardProps) {
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             Create Action — applies to all {trend.affectedCount} companies
           </p>
+          <label htmlFor={`action-title-${trend.id}`} className="sr-only">Action title</label>
           <input
+            id={`action-title-${trend.id}`}
             autoFocus
             type="text"
             placeholder="Action title"
@@ -143,7 +160,9 @@ export function TrendCard({ trend, onDismissed }: TrendCardProps) {
             onKeyDown={(e) => e.key === 'Enter' && handleCreateAction()}
             className="input w-full"
           />
+          <label htmlFor={`action-desc-${trend.id}`} className="sr-only">Description (optional)</label>
           <textarea
+            id={`action-desc-${trend.id}`}
             rows={2}
             placeholder="Description (optional)"
             value={actionDesc}

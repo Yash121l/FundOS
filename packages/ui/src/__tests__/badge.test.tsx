@@ -9,17 +9,20 @@ describe('Badge', () => {
   })
 
   it('renders with healthy variant', () => {
-    const { container } = render(<Badge variant="healthy">Healthy</Badge>)
-    expect(container.innerHTML).toContain('emerald')
+    render(<Badge variant="healthy">Healthy</Badge>)
+    const el = screen.getByText('Healthy')
+    expect(el.className).toContain('emerald')
   })
 
   it('renders with atRisk variant', () => {
-    const { container } = render(<Badge variant="atRisk">At Risk</Badge>)
-    expect(container.innerHTML).toContain('red')
+    render(<Badge variant="atRisk">At Risk</Badge>)
+    const el = screen.getByText('At Risk')
+    expect(el.className).toContain('red')
   })
 
   it('renders with watchlist variant', () => {
-    const { container } = render(<Badge variant="watchlist">Watchlist</Badge>)
-    expect(container.innerHTML).toContain('amber')
+    render(<Badge variant="watchlist">Watchlist</Badge>)
+    const el = screen.getByText('Watchlist')
+    expect(el.className).toContain('amber')
   })
 })

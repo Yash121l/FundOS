@@ -42,13 +42,13 @@ export default async function LPReportsPage() {
         </div>
       ) : (
         <div className="rounded-xl border border-border overflow-hidden">
-          <div className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 px-4 py-2.5 border-b border-border bg-card">
+          <div className="hidden sm:grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 px-4 py-2.5 border-b border-border bg-card">
             {['Report', 'Quarter', 'Companies', 'Status', ''].map((col) => (
               <p key={col} className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/70">{col}</p>
             ))}
           </div>
           {reports.map((report) => (
-            <div key={report.id} className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 px-4 py-3.5 border-b border-border last:border-0 items-center hover:bg-secondary/20 transition-colors">
+            <div key={report.id} className="flex flex-col gap-2 sm:grid sm:grid-cols-[2fr_1fr_1fr_1fr_auto] sm:gap-4 px-4 py-3.5 border-b border-border last:border-0 items-start sm:items-center hover:bg-secondary/20 transition-colors">
               <div>
                 <p className="text-[13px] font-medium text-foreground">{report.title}</p>
                 <p className="text-[11px] text-muted-foreground">{formatDate(report.createdAt)}</p>

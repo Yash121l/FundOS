@@ -18,6 +18,10 @@ export async function generateReport(
 ): Promise<{ success: boolean; reportId: string }> {
   const { quarter, companyIds, tone } = config
 
+  if (!/^\d{4}-Q[1-4]$/.test(quarter)) {
+    throw new Error(`Invalid quarter format: ${quarter}`)
+  }
+
   // 1. Create report record in GENERATING state
   const report = await db.lPReport.create({
     data: {
@@ -102,10 +106,9 @@ export async function generateReport(
     revalidatePath('/lp-reports')
     return { success: true, reportId: report.id }
   } catch (err) {
-    // Mark as failed if anything goes wrong
     await db.lPReport.update({
       where: { id: report.id },
-      data: { status: 'GENERATING' }, // leave in GENERATING so user can see it failed to complete
+      data: { status: 'FAILED' },
     })
     throw err
   }

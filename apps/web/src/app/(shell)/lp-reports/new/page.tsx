@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic'
 export default async function NewLPReportPage() {
   const [companies, quarters] = await Promise.all([
     getCompaniesForReport().catch(() => []),
-    Promise.resolve(getQuarterOptions()),
+    Promise.resolve(getQuarterOptions()), // synchronous — Promise.all accepts non-promises
   ])
 
   return (

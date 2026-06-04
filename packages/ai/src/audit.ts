@@ -31,7 +31,8 @@ export async function writeAIAuditLog(entry: AIAuditEntry): Promise<void> {
         })),
       },
     })
-  } catch {
-    // Silently swallow — audit log failure must never crash the main flow
+  } catch (err) {
+    // Audit log failure must never crash the main flow — log to stderr for observability
+    process.stderr.write(`[AI Audit] write failed for ${entry.entityType}:${entry.entityId} — ${err}\n`)
   }
 }

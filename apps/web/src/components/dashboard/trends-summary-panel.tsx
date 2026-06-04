@@ -61,7 +61,7 @@ export function TrendsSummaryPanel({ trends }: { trends: ActiveTrend[] }) {
                     key={i}
                     className="text-[11px] text-muted-foreground bg-secondary rounded px-1.5 py-px"
                   >
-                    {company.name.split(' ')[0]}
+                    {(company.name.trim() || '?').split(' ')[0]}
                   </span>
                 ))}
                 {t.affectedCount > 3 && (

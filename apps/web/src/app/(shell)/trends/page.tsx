@@ -13,9 +13,9 @@ export default async function TrendsPage({ searchParams }: Props) {
   const filter = (params.category?.toUpperCase() as TrendFilter | undefined) ?? 'ALL'
 
   const [trends, counts, dismissed] = await Promise.all([
-    getTrendsForPage(filter).catch(() => []),
-    getTrendCounts().catch(() => ({ active: 0, dismissed: 0 })),
-    getDismissedTrends().catch(() => []),
+    getTrendsForPage(filter).catch((err) => { console.error('[TrendsPage] getTrendsForPage failed', err); return [] }),
+    getTrendCounts().catch((err) => { console.error('[TrendsPage] getTrendCounts failed', err); return { active: 0, dismissed: 0 } }),
+    getDismissedTrends().catch((err) => { console.error('[TrendsPage] getDismissedTrends failed', err); return [] }),
   ])
 
   return (

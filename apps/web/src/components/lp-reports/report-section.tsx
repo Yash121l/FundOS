@@ -1,5 +1,6 @@
 'use client'
 
+import DOMPurify from 'dompurify'
 import { useState, useTransition } from 'react'
 import { updateReportSection } from '@/lib/lp-report-actions'
 import { cn } from '@/lib/utils'
@@ -12,7 +13,7 @@ interface ReportSectionProps {
 
 // Minimal markdown → HTML renderer (bold, headers, bullets, tables, blockquotes)
 function renderMarkdown(md: string): string {
-  return md
+  const html = md
     .replace(/^## (.+)$/gm, '<h3 class="text-[13px] font-semibold text-foreground mt-4 mb-1.5">$1</h3>')
     .replace(/^### (.+)$/gm, '<h4 class="text-[12px] font-semibold text-foreground mt-3 mb-1">$1</h4>')
     .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-foreground">$1</strong>')
@@ -27,6 +28,11 @@ function renderMarkdown(md: string): string {
     .replace(/^- (.+)$/gm, '<li class="text-[13px] text-foreground/90 ml-4 list-disc">$1</li>')
     .replace(/(<li[\s\S]*?<\/li>(\n|$))+/g, (match) => `<ul class="space-y-0.5 my-2">${match}</ul>`)
     .replace(/\n\n/g, '<br class="my-2" />')
+
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: ['h3', 'h4', 'strong', 'blockquote', 'table', 'tr', 'th', 'td', 'ul', 'li', 'br'],
+    ALLOWED_ATTR: ['class'],
+  })
 }
 
 export function ReportSectionCard({ section, reportId }: ReportSectionProps) {
@@ -70,6 +76,7 @@ export function ReportSectionCard({ section, reportId }: ReportSectionProps) {
         {editing ? (
           <textarea
             autoFocus
+            aria-label="Edit report section content"
             value={content}
             onChange={(e) => setContent(e.target.value)}
             className={cn(

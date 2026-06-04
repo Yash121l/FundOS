@@ -63,15 +63,8 @@ export function Inbox({ initialUpdates }: InboxProps) {
       hiringNeeds: null,
       additionalNotes: null,
       fundraisingNote: null,
-      wins: (update as InboxUpdate & { wins?: string }).wins ?? '',
-      risks: (update as InboxUpdate & { risks?: string }).risks ?? '',
       company: update.company as UpdateDetail['company'],
-      detectedRisks: update.detectedRisks.map((r) => ({
-        ...r,
-        id: '',
-        description: '',
-        status: 'OPEN' as const,
-      })),
+      detectedRisks: update.detectedRisks as UpdateDetail['detectedRisks'],
       opportunities: [],
     } as unknown as UpdateDetail)
   }, [])

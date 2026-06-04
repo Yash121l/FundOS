@@ -4,6 +4,7 @@ import { db } from '@fundos/database'
 import { TrendDetectionAgent } from '@fundos/ai'
 import { revalidatePath } from 'next/cache'
 import { getUpdatesForTrendDetection } from './trends'
+import type { TrendDetectionInput } from '@fundos/types'
 
 // ── Create an action linked to all companies in a trend ──────
 
@@ -11,34 +12,39 @@ export async function createActionFromTrend(
   trendId: string,
   title: string,
   description: string
-): Promise<{ success: boolean; actionsCreated: number }> {
-  const trend = await db.trendFinding.findUnique({
-    where: { id: trendId },
-    select: { evidence: { select: { companyId: true }, distinct: ['companyId'] } },
-  })
+): Promise<{ success: boolean; actionsCreated: number; error?: string }> {
+  try {
+    const trend = await db.trendFinding.findUnique({
+      where: { id: trendId },
+      select: { evidence: { select: { companyId: true }, distinct: ['companyId'] } },
+    })
 
-  if (!trend || trend.evidence.length === 0) return { success: false, actionsCreated: 0 }
+    if (!trend || trend.evidence.length === 0) return { success: false, actionsCreated: 0 }
 
-  const companyIds = trend.evidence.map((e) => e.companyId)
+    const companyIds = trend.evidence.map((e) => e.companyId)
 
-  await db.action.createMany({
-    data: companyIds.map((companyId) => ({
-      companyId,
-      title,
-      description: description || null,
-      priority: 'MEDIUM' as const,
-      status: 'PENDING' as const,
-    })),
-  })
+    await db.$transaction([
+      db.action.createMany({
+        data: companyIds.map((companyId) => ({
+          companyId,
+          title,
+          description: description || null,
+          priority: 'MEDIUM' as const,
+          status: 'PENDING' as const,
+        })),
+      }),
+      db.trendFinding.update({
+        where: { id: trendId },
+        data: { status: 'ACTIONED' },
+      }),
+    ])
 
-  // Mark trend as actioned
-  await db.trendFinding.update({
-    where: { id: trendId },
-    data: { status: 'ACTIONED' },
-  })
-
-  revalidatePath('/trends')
-  return { success: true, actionsCreated: companyIds.length }
+    revalidatePath('/trends')
+    return { success: true, actionsCreated: companyIds.length }
+  } catch (err) {
+    console.error('[createActionFromTrend] failed', { trendId, err })
+    return { success: false, actionsCreated: 0, error: 'Failed to create actions' }
+  }
 }
 
 // ── Get dismissed trends ─────────────────────────────────────
@@ -91,7 +97,11 @@ export async function runTrendAnalysis(): Promise<{ found: number }> {
   if (updates.length < 3) return { found: 0 }
 
   const agent = new TrendDetectionAgent()
-  const result = await agent.detect({ updates: updates as never, metricsHistory: [] })
+  const typedUpdates: TrendDetectionInput['updates'] = updates
+  const result = await agent.detect({
+    updates: typedUpdates,
+    metricsHistory: [],
+  })
 
   if (result.findings.length === 0) return { found: 0 }
 

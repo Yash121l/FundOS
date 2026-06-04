@@ -37,7 +37,7 @@ export async function getUpdatesForInbox(filter: InboxFilter = 'all') {
       },
       detectedRisks: {
         where: { status: 'OPEN' },
-        select: { title: true, severity: true, category: true },
+        select: { id: true, title: true, description: true, severity: true, category: true, status: true },
         orderBy: { severity: 'desc' },
         take: 3,
       },

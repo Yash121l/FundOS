@@ -84,6 +84,8 @@ export function SignalFeed({ initialSignals, initialFilter, counts }: SignalFeed
               <button
                 key={value}
                 onClick={() => setFilter(value)}
+                aria-pressed={filter === value}
+                aria-label={`${label}${count ? `, ${count}` : ''}`}
                 className={`px-3 py-1.5 text-[12px] font-medium transition-colors whitespace-nowrap flex items-center gap-1.5 ${
                   filter === value
                     ? 'bg-primary text-primary-foreground'
@@ -108,6 +110,7 @@ export function SignalFeed({ initialSignals, initialFilter, counts }: SignalFeed
         {unread.length > 0 && (
           <button
             onClick={markAllRead}
+            aria-label="Mark all signals as read"
             className="text-[12px] text-muted-foreground hover:text-foreground transition-colors"
           >
             Mark all read
@@ -142,6 +145,8 @@ export function SignalFeed({ initialSignals, initialFilter, counts }: SignalFeed
       {!showRead && read.length > 0 && unread.length > 0 && (
         <button
           onClick={() => setShowRead(true)}
+          aria-label={`Show ${read.length} read signal${read.length !== 1 ? 's' : ''}`}
+          aria-expanded={false}
           className="mt-4 text-[12px] text-muted-foreground hover:text-foreground transition-colors"
         >
           ▸ Show {read.length} read signal{read.length !== 1 ? 's' : ''}
@@ -150,6 +155,8 @@ export function SignalFeed({ initialSignals, initialFilter, counts }: SignalFeed
       {showRead && read.length > 0 && (
         <button
           onClick={() => setShowRead(false)}
+          aria-label="Hide read signals"
+          aria-expanded={true}
           className="mt-4 text-[12px] text-muted-foreground hover:text-foreground transition-colors"
         >
           ▾ Hide read signals

@@ -120,7 +120,7 @@ function PaletteContent({
               value={label}
               onSelect={() => navigate(href)}
               className={cn(
-                'flex items-center gap-2.5 px-3 py-2 mx-1.5 rounded-md cursor-pointer text-[13px] text-muted-foreground',
+                'group flex items-center gap-2.5 px-3 py-2 mx-1.5 rounded-md cursor-pointer text-[13px] text-muted-foreground',
                 'data-[selected=true]:bg-secondary data-[selected=true]:text-foreground'
               )}
             >
@@ -143,12 +143,21 @@ function CompanyResults({ onSelect }: { onSelect: (slug: string) => void }) {
   // We use a search input that cmdk manages — results filtered client-side via value matching
   // For actual DB search we'd wire up a server query; for Phase 3, cmdk's built-in filter is sufficient
 
-  const { data: companies = [] } = useQuery<SearchResult[]>({
+  const { data: companies = [], isError } = useQuery<SearchResult[]>({
     queryKey: ['companies-search'],
-    queryFn: () => fetch('/api/search').then((r) => r.json()),
+    queryFn: async () => {
+      const r = await fetch('/api/search')
+      if (!r.ok) throw new Error(`Search failed: ${r.status}`)
+      return r.json()
+    },
     staleTime: 5 * 60 * 1000,
   })
 
+  if (isError) return (
+    <Command.Item disabled className="px-4 py-2 text-[12px] text-destructive">
+      Failed to load companies
+    </Command.Item>
+  )
   if (companies.length === 0) return null
 
   return (

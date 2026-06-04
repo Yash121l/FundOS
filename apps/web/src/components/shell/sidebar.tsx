@@ -69,6 +69,7 @@ export function Sidebar({ badges }: SidebarProps) {
                   <li key={href}>
                     <Link
                       href={href}
+                      aria-current={isActive ? 'page' : undefined}
                       className={cn(
                         'group flex items-center gap-2 h-[30px] px-2 rounded-md text-[13px] transition-colors',
                         isActive

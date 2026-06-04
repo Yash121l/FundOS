@@ -56,8 +56,10 @@ export class MarketIntelligenceAgent {
     const { sector } = company
     const keywords = SECTOR_KEYWORDS[sector] ?? []
     const desc = (company.description ?? '').toLowerCase()
-    const textMatchesSector = keywords.some((kw) => text.includes(kw))
-    const descMatchesText = keywords.some((kw) => desc.includes(kw) && text.includes(kw))
+    const matchesKw = (str: string, kw: string) =>
+      kw.length <= 2 ? new RegExp(`\\b${kw}\\b`, 'i').test(str) : str.includes(kw)
+    const textMatchesSector = keywords.some((kw) => matchesKw(text, kw))
+    const descMatchesText = keywords.some((kw) => matchesKw(desc, kw) && matchesKw(text, kw))
 
     if (category === 'REGULATION') {
       if (REGULATION_SECTORS.has(sector) && textMatchesSector) {

@@ -1,9 +1,5 @@
 import { db } from '@fundos/database'
-
-function currentPeriod(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-}
+import { currentPeriod } from '@fundos/shared'
 
 // ── Portfolio table ────────────────────────────────────────
 

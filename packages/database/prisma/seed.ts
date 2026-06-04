@@ -22,12 +22,13 @@ function pct(n: number): string {
   return `${(n * 100).toFixed(0)}%`
 }
 
-function hScore(growth: number, runway: number, burn: number, mrr: number): number {
-  let g = growth >= 0.15 ? 100 : growth >= 0.08 ? 80 : growth >= 0.03 ? 60 : growth >= 0 ? 40 : growth >= -0.05 ? 20 : 5
-  let r = runway >= 24 ? 100 : runway >= 18 ? 85 : runway >= 12 ? 70 : runway >= 9 ? 55 : runway >= 6 ? 35 : runway >= 3 ? 15 : 5
+function hScore(growth: number, runway: number, burn: number, mrr: number, nrr = 100): number {
+  const g = growth >= 0.15 ? 100 : growth >= 0.08 ? 80 : growth >= 0.03 ? 60 : growth >= 0 ? 40 : growth >= -0.05 ? 20 : 5
+  const rt = nrr >= 120 ? 100 : nrr >= 110 ? 85 : nrr >= 105 ? 70 : nrr >= 100 ? 50 : nrr >= 95 ? 30 : 15
+  const r = runway >= 24 ? 100 : runway >= 18 ? 85 : runway >= 12 ? 70 : runway >= 9 ? 55 : runway >= 6 ? 35 : runway >= 3 ? 15 : 5
   const ratio = mrr > 0 ? burn / mrr : 99
-  let b = ratio <= 0.5 ? 100 : ratio <= 1 ? 80 : ratio <= 2 ? 60 : ratio <= 3 ? 40 : ratio <= 5 ? 20 : 5
-  return Math.round(g * 0.35 + g * 0.25 + r * 0.25 + b * 0.15)
+  const b = ratio <= 0.5 ? 100 : ratio <= 1 ? 80 : ratio <= 2 ? 60 : ratio <= 3 ? 40 : ratio <= 5 ? 20 : 5
+  return Math.round(g * 0.35 + rt * 0.25 + r * 0.25 + b * 0.15)
 }
 
 // ============================================================
@@ -187,7 +188,7 @@ function genMetrics(c: C): MetricRow[] {
       period, mrr, arr: mrr * 12, revenueGrowthMom: growth,
       burnRate: burn, cashBalance: cash, runway,
       headcount: hc, grossMargin: c.gm, nrr: c.nrr,
-      healthScore: hScore(growth, runway, burn, mrr),
+      healthScore: hScore(growth, runway, burn, mrr, c.nrr),
     })
   }
 
@@ -373,13 +374,25 @@ async function main() {
   await db.lPReport.deleteMany()
   await db.company.deleteMany()
 
+  await db.user.upsert({
+    where: { id: 'SYSTEM' },
+    update: {},
+    create: {
+      id: 'SYSTEM',
+      clerkId: 'system',
+      email: 'system@fundos.local',
+      name: 'System',
+      role: 'PORTFOLIO_OPS',
+    },
+  })
+
   const companyMap: Record<string, string> = {} // slug → id
 
   // ── Companies + Metrics + Updates + Risks ───────────────────
   for (const c of COMPANIES) {
     const metrics = genMetrics(c)
     const latestMetric = metrics[metrics.length - 1]!
-    const currentScore = hScore(latestMetric.revenueGrowthMom, latestMetric.runway, latestMetric.burnRate, latestMetric.mrr)
+    const currentScore = hScore(latestMetric.revenueGrowthMom, latestMetric.runway, latestMetric.burnRate, latestMetric.mrr, latestMetric.nrr)
 
     const company = await db.company.create({
       data: {

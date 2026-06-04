@@ -1,0 +1,98 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+language: "en-US"
+
+reviews:
+  profile: "assertive"
+  request_changes_workflow: true
+  high_level_summary: true
+  high_level_summary_placeholder: "@coderabbitai summary"
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - main
+
+  path_filters:
+    - "!**/node_modules/**"
+    - "!**/.turbo/**"
+    - "!**/dist/**"
+    - "!**/.next/**"
+    - "!**/generated/**"
+    - "!**/pnpm-lock.yaml"
+
+  path_instructions:
+    - path: "apps/api/**"
+      instructions: |
+        Enforce the route → service → repository layering. Routes must delegate to
+        services; never call Prisma directly from a route handler.
+        All request bodies and query params must be validated with Zod.
+        API responses must never expose raw Prisma model shapes — map to typed DTOs.
+        Check for N+1 query patterns in repository functions.
+        Structured error handling via the central error middleware is required.
+
+    - path: "apps/web/**"
+      instructions: |
+        React Server Components are the default — flag any `"use client"` directive
+        that doesn't have a clear need (event handlers, browser APIs, hooks).
+        Every async data-fetch in a Server Component should be wrapped in Suspense.
+        No waterfalls: parallel data fetching with Promise.all where possible.
+        UI must be mobile-responsive and keyboard-accessible.
+        No marketing-style decorative components — keep the Linear/Stripe/Ramp aesthetic.
+
+    - path: "apps/workers/**"
+      instructions: |
+        All jobs run on Trigger.dev v3. No long-running work inside request handlers.
+        Jobs must handle idempotency — safe to retry on failure.
+        Log job progress at meaningful checkpoints.
+
+    - path: "packages/ai/**"
+      instructions: |
+        AI services are domain-specific — never generic chatbot patterns.
+        Every AI execution MUST log: prompt, inputs, outputs, model, duration, token usage.
+        Every generated insight must reference the source records it was derived from.
+        AI must degrade gracefully when unavailable — the platform stays functional.
+
+    - path: "packages/database/**"
+      instructions: |
+        Schema changes via migrations only — never edit schema.prisma without a migration.
+        All foreign keys must be indexed.
+        Historical data is append-only — no UPDATE or DELETE on audit/history tables.
+        Avoid schema drift: verify migration SQL matches the Prisma schema intent.
+
+    - path: "packages/analytics/**"
+      instructions: |
+        Analytics functions are pure and deterministic — no side effects, no AI calls.
+        Health score weights: growth 35%, revenueTrend 25%, runway 25%, burnEfficiency 15%.
+        Thresholds: Healthy ≥ 65, Watchlist 40–64, At Risk < 40.
+        Every function must have a corresponding unit test.
+
+    - path: "packages/shared/**"
+      instructions: |
+        Shared utilities must be purely functional with no external dependencies.
+        Every exported function must have a unit test.
+
+    - path: "packages/ui/**"
+      instructions: |
+        Components must be accessible (ARIA, keyboard nav).
+        No business logic in UI components — props in, JSX out.
+        Every component must have a unit test with @testing-library/react.
+
+    - path: "**/*.test.ts"
+      instructions: |
+        Tests must follow the Red-Green-Refactor TDD cycle (written before implementation).
+        No mocking of the database in integration tests.
+        Assert on observable behavior, not implementation details.
+
+  finishing_touches:
+    docstrings:
+      enabled: false
+
+abort_on_close: true
+
+chat:
+  auto_reply: true

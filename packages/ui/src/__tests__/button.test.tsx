@@ -18,7 +18,7 @@ describe('Button', () => {
 
   it('is disabled when disabled prop is set', () => {
     render(<Button disabled>Disabled</Button>)
-    expect(screen.getByRole('button').hasAttribute('disabled')).toBe(true)
+    expect(screen.getByRole('button')).toBeDisabled()
   })
 
   it('applies variant class names', () => {

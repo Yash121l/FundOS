@@ -124,6 +124,7 @@ enum ReportStatus {
   READY
   EXPORTED
   ARCHIVED
+  FAILED
 }
 
 enum TrendCategory {
@@ -167,6 +168,10 @@ model User {
 
   tasks     Task[]
   auditLogs AuditLog[]
+  submittedUpdates FounderUpdate[] @relation("SubmittedUpdates")
+  reviewedUpdates  FounderUpdate[] @relation("ReviewedUpdates")
+  createdTasks     Task[]          @relation("CreatedTasks")
+  generatedReports LPReport[]      @relation("GeneratedReports")
 
   @@map("users")
 }
@@ -202,6 +207,7 @@ model Company {
   @@index([sector])
   @@index([healthStatus])
   @@index([stage])
+  @@index([name])
   @@index([status])
   @@map("companies")
 }
@@ -257,6 +263,8 @@ model FounderUpdate {
   updatedAt         DateTime          @updatedAt
 
   company       Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  submittedBy   User?         @relation("SubmittedUpdates", fields: [submittedById], references: [id], onDelete: SetNull)
+  reviewedBy    User?         @relation("ReviewedUpdates", fields: [reviewedById], references: [id], onDelete: SetNull)
   detectedRisks Risk[]
   opportunities Opportunity[]
   actions       Action[]
@@ -264,6 +272,8 @@ model FounderUpdate {
   @@index([companyId])
   @@index([period])
   @@index([reviewedAt])
+  @@index([submittedById])
+  @@index([reviewedById])
   @@map("founder_updates")
 }
 
@@ -346,9 +356,11 @@ model Task {
 
   company  Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
   assignee User?    @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
+  createdBy User    @relation("CreatedTasks", fields: [createdById], references: [id], onDelete: Restrict)
 
   @@index([companyId])
   @@index([assigneeId])
+  @@index([createdById])
   @@index([status])
   @@map("tasks")
 }
@@ -368,9 +380,11 @@ model LPReport {
 
   sections  LPReportSection[]
   companies ReportCompany[]
+  generatedBy User @relation("GeneratedReports", fields: [generatedById], references: [id], onDelete: Restrict)
 
   @@index([quarter])
   @@index([status])
+  @@index([generatedById])
   @@map("lp_reports")
 }
 
@@ -421,6 +435,7 @@ model TrendFinding {
 
   evidence TrendEvidence[]
 
+  @@unique([title, periodStart])
   @@index([category])
   @@index([status])
   @@map("trend_findings")

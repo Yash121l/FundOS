@@ -56,7 +56,7 @@ export function FundMetricsRow({ data }: { data: FundMetrics }) {
   ]
 
   return (
-    <div className="flex-1 grid grid-cols-4 gap-3">
+    <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
       {metrics.map(({ label, value, sub }) => (
         <div
           key={label}

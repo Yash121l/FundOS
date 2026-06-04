@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import { Suspense } from 'react'
 import Link from 'next/link'
 import { getLPReportById } from '@/lib/lp-reports'
 import { ReportViewer } from '@/components/lp-reports/report-viewer'
@@ -23,7 +24,9 @@ export default async function LPReportDetailPage({ params }: Props) {
         <span className="text-foreground">{report.title}</span>
       </div>
 
-      <ReportViewer report={report} />
+      <Suspense fallback={<div className="text-[13px] text-muted-foreground py-4">Loading report…</div>}>
+        <ReportViewer report={report} />
+      </Suspense>
     </div>
   )
 }

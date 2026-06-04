@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useTransition, useMemo } from 'react'
+import { useState, useTransition, useMemo, useEffect, useId, isValidElement, cloneElement, Children } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatMrr, formatCurrency, formatRunway, formatGrowth, getPeriodOptions, suggestNextPeriod, sectorLabel } from '@fundos/shared'
 import { submitFounderUpdate, type UpdateFormData } from '@/lib/update-actions'
 import type { CompanyForForm } from '@/lib/updates'
+import type { FundraisingStatus } from '@fundos/types'
 
 interface UpdateFormProps {
   companies: CompanyForForm[]
@@ -41,7 +42,7 @@ export function UpdateForm({ companies, defaultCompanyId }: UpdateFormProps) {
   // Narrative
   const [wins, setWins] = useState('')
   const [risks, setRisks] = useState('')
-  const [fundraisingStatus, setFundraisingStatus] = useState('NOT_RAISING')
+  const [fundraisingStatus, setFundraisingStatus] = useState<FundraisingStatus>('NOT_RAISING')
   const [fundraisingNote, setFundraisingNote] = useState('')
   const [hiringNeeds, setHiringNeeds] = useState('')
   const [additionalNotes, setAdditionalNotes] = useState('')
@@ -60,7 +61,7 @@ export function UpdateForm({ companies, defaultCompanyId }: UpdateFormProps) {
   const periodOptions = getPeriodOptions(6)
 
   // Initialise period when company changes
-  useMemo(() => {
+  useEffect(() => {
     setPeriod(suggestedPeriod)
   }, [suggestedPeriod])
 
@@ -283,7 +284,7 @@ export function UpdateForm({ companies, defaultCompanyId }: UpdateFormProps) {
           <Field label="Fundraising Status">
             <select
               value={fundraisingStatus}
-              onChange={(e) => setFundraisingStatus(e.target.value)}
+              onChange={(e) => setFundraisingStatus(e.target.value as FundraisingStatus)}
               className="input w-full"
             >
               {FUNDRAISING_OPTIONS.map((o) => (
@@ -351,7 +352,7 @@ export function UpdateForm({ companies, defaultCompanyId }: UpdateFormProps) {
             </div>
           </div>
           <p className="text-[12px] text-muted-foreground">
-            After submitting, AI analysis will run automatically and update the company&apos;s health score.
+            After submitting, AI analysis will run in the background and update the company&apos;s health score shortly.
           </p>
         </div>
       )}
@@ -382,13 +383,23 @@ export function UpdateForm({ companies, defaultCompanyId }: UpdateFormProps) {
 function Field({ label, hint, error, children }: {
   label: string; hint?: string; error?: string; children: React.ReactNode
 }) {
+  const id = useId()
+  // Inject the generated id into the first child element (the form control)
+  const childArray = Children.toArray(children)
+  const control = childArray[0]
+  const rest = childArray.slice(1)
+  const controlWithId = isValidElement(control)
+    ? cloneElement(control as React.ReactElement<{ id?: string }>, { id })
+    : control
+
   return (
     <div>
       <div className="flex items-center gap-1 mb-1.5">
-        <label className="text-[12px] font-medium text-muted-foreground">{label}</label>
+        <label htmlFor={id} className="text-[12px] font-medium text-muted-foreground">{label}</label>
         {hint && <span className="text-[11px] text-muted-foreground/50">({hint})</span>}
       </div>
-      {children}
+      {controlWithId}
+      {rest}
       {error && <p className="text-[11px] text-destructive mt-1">{error}</p>}
     </div>
   )
@@ -418,7 +429,7 @@ function SuccessScreen({ companyName, period, onDone }: { companyName: string; p
         {companyName} · {period}
       </p>
       <p className="text-[12px] text-muted-foreground/70 mb-6">
-        AI analysis has run and the company&apos;s health score has been updated.
+        AI analysis is running in the background. The company&apos;s health score will update shortly.
       </p>
       <button
         onClick={onDone}

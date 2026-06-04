@@ -59,7 +59,7 @@ export type ActionStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'DISMISSED'
 
 export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'DONE' | 'CANCELLED'
 
-export type ReportStatus = 'GENERATING' | 'READY' | 'EXPORTED' | 'ARCHIVED'
+export type ReportStatus = 'GENERATING' | 'READY' | 'EXPORTED' | 'ARCHIVED' | 'FAILED'
 
 export type TrendCategory =
   | 'SHARED_RISK'

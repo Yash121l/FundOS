@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { getSignals, getSignalCounts, type SignalFilter } from '@/lib/signals'
 import { SignalFeed } from '@/components/intelligence/signal-feed'
 
@@ -12,7 +13,7 @@ export default async function IntelligencePage({ searchParams }: Props) {
   const filter = (params.category?.toUpperCase() as SignalFilter | undefined) ?? 'ALL'
 
   const [signals, counts] = await Promise.all([
-    getSignals('ALL').catch(() => []),
+    getSignals(filter).catch(() => []),
     getSignalCounts().catch(() => ({ total: 0 })),
   ])
 
@@ -32,7 +33,9 @@ export default async function IntelligencePage({ searchParams }: Props) {
         </div>
       </div>
 
-      <SignalFeed initialSignals={signals} initialFilter={filter} counts={counts} />
+      <Suspense fallback={<div className="text-[13px] text-muted-foreground py-4">Loading signals…</div>}>
+        <SignalFeed initialSignals={signals} initialFilter={filter} counts={counts} />
+      </Suspense>
     </div>
   )
 }

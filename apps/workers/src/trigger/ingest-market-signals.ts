@@ -1,6 +1,7 @@
 import { task, schedules } from '@trigger.dev/sdk/v3'
 import { db } from '@fundos/database'
 import { MarketIntelligenceAgent } from '@fundos/ai'
+import type { Company } from '@fundos/types'
 
 // Stub — mock data only in MVP.
 // Architecture is ready for Exa/Tavily/Firecrawl integration.
@@ -31,7 +32,10 @@ export const ingestMarketSignals = task({
     let failed = 0
     for (const signal of unlinked) {
       try {
-        const result = await agent.enrich({ signal, portfolio: companies as never })
+        const result = await agent.enrich({
+          signal,
+          portfolio: companies as unknown as Pick<Company, 'id' | 'name' | 'sector' | 'description' | 'status'>[],
+        })
         if (result.relevantCompanyIds.length > 0) {
           await db.companySignal.createMany({
             data: result.relevantCompanyIds.map((companyId) => ({
@@ -43,7 +47,8 @@ export const ingestMarketSignals = task({
           })
           enriched++
         }
-      } catch {
+      } catch (err) {
+        console.error('[ingest-market-signals] enrichment failed', { signalId: signal.id, err })
         failed++
       }
     }

@@ -7,6 +7,8 @@ import type { RecentAlert } from '@/lib/dashboard'
 const SEVERITY_STYLES: Record<string, string> = {
   CRITICAL: 'text-red-400 bg-red-500/10 border-red-500/20',
   HIGH: 'text-orange-400 bg-orange-500/10 border-orange-500/20',
+  MEDIUM: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
+  LOW: 'text-muted-foreground bg-secondary/40 border-border',
 }
 
 const CATEGORY_ICON: Record<string, string> = {
@@ -46,7 +48,7 @@ export function RecentAlertsPanel({ alerts }: { alerts: RecentAlert[] }) {
               href={`/portfolio/${alert.company.slug}`}
               className="flex items-start gap-2.5 rounded-lg px-2.5 py-2 hover:bg-accent/40 transition-colors group"
             >
-              <span className="text-sm flex-shrink-0 mt-px">{CATEGORY_ICON[alert.category] ?? '•'}</span>
+              <span aria-hidden="true" className="text-sm flex-shrink-0 mt-px">{CATEGORY_ICON[alert.category] ?? '•'}</span>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-[12px] font-semibold text-foreground group-hover:underline truncate">
@@ -54,7 +56,7 @@ export function RecentAlertsPanel({ alerts }: { alerts: RecentAlert[] }) {
                   </span>
                   <span className={cn(
                     'inline-flex items-center rounded border px-1.5 py-px text-[9px] font-bold tracking-wide flex-shrink-0',
-                    SEVERITY_STYLES[alert.severity] ?? SEVERITY_STYLES.HIGH
+                    SEVERITY_STYLES[alert.severity] ?? SEVERITY_STYLES.MEDIUM
                   )}>
                     {alert.severity}
                   </span>

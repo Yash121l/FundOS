@@ -4,7 +4,9 @@ import type { MetricSnapshot, HealthStatus, HealthScore, GrowthTrend, FundAggreg
 // HEALTH SCORING
 // ==================
 
-export function computeHealthScore(metrics: MetricSnapshot[]): HealthScore {
+type HealthMetricInput = Pick<MetricSnapshot, 'mrr' | 'revenueGrowthMom' | 'burnRate' | 'runway'>
+
+export function computeHealthScore(metrics: HealthMetricInput[]): HealthScore {
   if (metrics.length === 0) {
     return { score: 50, status: 'WATCHLIST', components: { growth: 50, revenueTrend: 50, runway: 50, burnEfficiency: 50 } }
   }
@@ -50,7 +52,7 @@ function scoreGrowth(growthMom: number | null | undefined): number {
   return 5
 }
 
-function scoreRevenueTrend(metrics: MetricSnapshot[]): number {
+function scoreRevenueTrend(metrics: HealthMetricInput[]): number {
   const last3 = metrics.slice(0, 3)
   if (last3.length < 2) return 50
 

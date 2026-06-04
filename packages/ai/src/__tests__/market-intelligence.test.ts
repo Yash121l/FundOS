@@ -21,7 +21,7 @@ function makeCompany(overrides: { id: string; name: string; sector: string; desc
     slug: overrides.name.toLowerCase(),
     logoUrl: null,
     website: null,
-    sector: overrides.sector as never,
+    sector: overrides.sector as Company['sector'],
     stage: 'SERIES_A',
     country: 'US',
     foundedYear: 2021,

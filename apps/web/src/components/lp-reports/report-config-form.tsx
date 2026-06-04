@@ -46,6 +46,7 @@ export function ReportConfigForm({ quarters, companies }: ReportConfigFormProps)
   }
 
   function handleGenerate() {
+    if (!quarter) { setError('Select a quarter.'); return }
     if (selectedIds.size === 0) { setError('Select at least one company.'); return }
     setError(null)
     setGenerating(true)
@@ -57,7 +58,8 @@ export function ReportConfigForm({ quarters, companies }: ReportConfigFormProps)
           tone,
         })
         router.push(`/lp-reports/${result.reportId}`)
-      } catch {
+      } catch (err) {
+        console.error('[generateReport] failed', err)
         setError('Report generation failed. Please try again.')
         setGenerating(false)
       }
@@ -68,8 +70,8 @@ export function ReportConfigForm({ quarters, companies }: ReportConfigFormProps)
     <div className="max-w-2xl space-y-6">
       {/* Quarter */}
       <div>
-        <label className="block text-[12px] font-medium text-muted-foreground mb-1.5">Reporting Quarter</label>
-        <select value={quarter} onChange={(e) => setQuarter(e.target.value)} className="input w-full max-w-xs">
+        <label htmlFor="quarter-select" className="block text-[12px] font-medium text-muted-foreground mb-1.5">Reporting Quarter</label>
+        <select id="quarter-select" value={quarter} onChange={(e) => setQuarter(e.target.value)} className="input w-full max-w-xs">
           {quarters.map((q) => <option key={q} value={q}>{q}</option>)}
         </select>
       </div>
@@ -110,12 +112,13 @@ export function ReportConfigForm({ quarters, companies }: ReportConfigFormProps)
             <label key={c.id} className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-secondary/30 transition-colors">
               <input
                 type="checkbox"
+                aria-labelledby={`company-name-${c.id}`}
                 checked={selectedIds.has(c.id)}
                 onChange={() => toggleCompany(c.id)}
                 className="accent-primary flex-shrink-0"
               />
               <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-medium text-foreground truncate">{c.name}</p>
+                <p id={`company-name-${c.id}`} className="text-[13px] font-medium text-foreground truncate">{c.name}</p>
                 <p className="text-[11px] text-muted-foreground">{c.sector} · {c.stage}</p>
               </div>
               <span className={`text-[10px] font-semibold rounded-md border px-1.5 py-0.5 flex-shrink-0 ${STATUS_BADGE[c.healthStatus] ?? ''}`}>

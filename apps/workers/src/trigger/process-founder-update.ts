@@ -1,8 +1,8 @@
 import { task } from '@trigger.dev/sdk/v3'
 import { db } from '@fundos/database'
 import { computeHealthScore, classifyHealth } from '@fundos/analytics'
-import { PortfolioAnalyst } from '@fundos/ai'
-import { writeAIAuditLog } from '@fundos/ai'
+import { PortfolioAnalyst, writeAIAuditLog } from '@fundos/ai'
+import type { Company, MetricSnapshot, FounderUpdate, PortfolioAnalystInput } from '@fundos/types'
 
 export interface ProcessFounderUpdatePayload {
   updateId: string
@@ -39,10 +39,10 @@ export const processFounderUpdate = task({
     // 2. Run PortfolioAnalyst
     const analyst = new PortfolioAnalyst()
     const analysis = await analyst.analyze({
-      company: company as never,
-      latestUpdate: update as never,
-      metricsHistory: metricsHistory as never,
-      previousUpdates: previousUpdates as never,
+      company: company as unknown as Company,
+      latestUpdate: update as unknown as PortfolioAnalystInput['latestUpdate'],
+      metricsHistory: metricsHistory as unknown as MetricSnapshot[],
+      previousUpdates: previousUpdates as unknown as FounderUpdate[],
     })
 
     const duration = Date.now() - startedAt
@@ -94,7 +94,7 @@ export const processFounderUpdate = task({
     }
 
     // 6. Update company health score
-    const healthResult = computeHealthScore(metricsHistory as never)
+    const healthResult = computeHealthScore(metricsHistory as unknown as MetricSnapshot[])
     const healthStatus = classifyHealth(healthResult.score)
 
     await db.company.update({
@@ -110,11 +110,6 @@ export const processFounderUpdate = task({
         aiProcessedAt: new Date(),
       },
     })
-
-    // 8. Alert if health changed to AT_RISK
-    if (healthStatus === 'AT_RISK' && company.healthStatus !== 'AT_RISK') {
-      console.log(`[ALERT] ${company.name} health changed to AT_RISK — notify portfolio ops team`)
-    }
 
     return {
       companyId,

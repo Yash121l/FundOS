@@ -110,3 +110,17 @@ select.input {
   background-position: right 0.75rem center;
   padding-right: 2rem;
 }
+
+@media print {
+  .print-hidden { display: none !important; }
+  .print-block { display: block !important; }
+  .print-sheet {
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border-left: none !important;
+    flex: none !important;
+  }
+}

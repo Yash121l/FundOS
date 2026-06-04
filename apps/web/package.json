@@ -13,6 +13,7 @@
     "@clerk/nextjs": "^6.11.0",
     "@fundos/analytics": "workspace:*",
     "@fundos/database": "workspace:*",
+    "@prisma/client": "^6.2.1",
     "@fundos/shared": "workspace:*",
     "@fundos/types": "workspace:*",
     "@fundos/ui": "workspace:*",

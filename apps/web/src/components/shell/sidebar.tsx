@@ -47,7 +47,7 @@ export function Sidebar({ badges }: SidebarProps) {
       {/* Logo */}
       <div className="h-14 flex items-center px-4 border-b border-border flex-shrink-0">
         <div className="h-[22px] w-[22px] rounded-md bg-primary mr-2.5 flex-shrink-0" />
-        <span className="font-semibold text-[13px] tracking-tight">FundOS</span>
+        <span className="font-semibold text-[13px] tracking-tight">SignalOS</span>
         <span className="ml-auto text-[10px] text-muted-foreground/50 font-medium uppercase tracking-widest">
           RTP
         </span>

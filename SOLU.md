@@ -1,4 +1,4 @@
-# FundOS
+# SignalOS
 
 ## Why This Exists
 
@@ -22,7 +22,7 @@ The result is that valuable information becomes fragmented across:
 - PDFs
 - Slack messages
 
-FundOS exists to become the operational intelligence layer for venture funds.
+SignalOS exists to become the operational intelligence layer for venture funds.
 
 The goal is not to replace investors.
 
@@ -36,7 +36,7 @@ Every LP report should be generated from live portfolio data.
 
 Every trend across the portfolio should be automatically discovered.
 
-FundOS should allow a small VC team to operate like a much larger one.
+SignalOS should allow a small VC team to operate like a much larger one.
 
 Success is measured by:
 
@@ -46,6 +46,6 @@ Success is measured by:
 - Better LP communication
 - Better investment decisions
 
-FundOS is not an AI chatbot.
+SignalOS is not an AI chatbot.
 
-FundOS is an AI-native operating system for venture funds.
+SignalOS is an AI-native operating system for venture funds.

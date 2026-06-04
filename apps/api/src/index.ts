@@ -19,7 +19,7 @@ app.use(
 
 // Health check (public)
 app.get('/health', (c) =>
-  c.json({ status: 'ok', service: 'fundos-api', timestamp: new Date().toISOString() })
+  c.json({ status: 'ok', service: 'signalos-api', timestamp: new Date().toISOString() })
 )
 
 // API routes — implemented per phase

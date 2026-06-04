@@ -1,4 +1,4 @@
-# FundOS — System Architecture
+# SignalOS — System Architecture
 
 ## Overview
 

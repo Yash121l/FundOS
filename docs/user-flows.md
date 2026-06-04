@@ -1,4 +1,4 @@
-# FundOS — User Flows
+# SignalOS — User Flows
 
 ## Design Principle
 

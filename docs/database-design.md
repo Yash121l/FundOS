@@ -1,4 +1,4 @@
-# FundOS — Database Design
+# SignalOS — Database Design
 
 ## Design Principles
 

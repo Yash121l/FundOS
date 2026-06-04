@@ -24,7 +24,7 @@ function getTitle(path: string): string {
   if (TITLES[path]) return TITLES[path]!
   if (path.startsWith('/portfolio/')) return 'Company Detail'
   if (path.startsWith('/lp-reports/')) return 'Report'
-  return 'FundOS'
+  return 'SignalOS'
 }
 
 export function Topbar() {

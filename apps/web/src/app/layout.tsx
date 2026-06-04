@@ -12,7 +12,7 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: { default: 'FundOS', template: '%s — FundOS' },
+  title: { default: 'SignalOS', template: '%s — SignalOS' },
   description: 'AI-native operating system for venture capital firms',
 }
 

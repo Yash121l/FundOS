@@ -10,7 +10,7 @@ This project is tracked in Yash's SecondBrain at `~/Documents/SecondBrain/`.
 
 1. Read `~/Documents/SecondBrain/BRAIN.md` — who Yash is, active projects, preferences
 2. Read `~/Documents/SecondBrain/projects/fundos.md` — current phase, last session, open questions
-3. Tell Yash ONE line: `🧠 FundOS — [last thing done / what's next]`
+3. Tell Yash ONE line: `🧠 SignalOS — [last thing done / what's next]`
 
 Then answer what Yash asked.
 
@@ -26,7 +26,7 @@ echo '{
   "chosen": "What was decided",
   "why": "Full reasoning",
   "tradeoffs": "What was given up",
-  "project": "fundos"
+  "project": "signalos"
 }' | ~/Documents/SecondBrain/hooks/log-decision.sh
 ```
 

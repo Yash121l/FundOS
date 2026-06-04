@@ -1,4 +1,4 @@
-# FundOS — Implementation Plan
+# SignalOS — Implementation Plan
 
 ## Execution Philosophy
 
@@ -410,3 +410,194 @@ TRIGGER_SECRET_KEY=...
 | Column visibility | Not in original plan | TanStack `columnVisibility` state | Added as gap completion |
 | Task creation from updates | Secondary flow | Implemented: inline form in ReviewSheet, `t` shortcut | Gap completion |
 | Action creation from trends | Secondary flow | Implemented: creates Action per affected company | Gap completion |
+
+---
+
+## Phase 10 — Claude API Integration (Real AI)
+
+**Goal:** Replace all rule-based agent stubs with live Claude claude-sonnet-4-6 calls. Every analysis the platform produces — update summaries, risk extraction, trend narratives, LP prose — becomes genuinely AI-generated rather than templated.
+
+**Prerequisite:** `ANTHROPIC_API_KEY` in `.env.local`. Install `@anthropic-ai/sdk` in `packages/ai`.
+
+**Why Claude over OpenAI here:** Claude's 200K context window fits an entire quarter of portfolio updates in one call. Claude's instruction-following and structured JSON output is excellent for the schema-bound outputs this platform needs (risks array, opportunities array, health summary). Prompt caching on the Anthropic API makes repeated portfolio-wide calls cost-efficient.
+
+### 10.1 — SDK & Shared Client
+
+- [ ] Add `@anthropic-ai/sdk` to `packages/ai/package.json`
+- [ ] Create `packages/ai/src/client.ts` — singleton Anthropic client with prompt caching headers
+- [ ] Env guard: if `ANTHROPIC_API_KEY` is absent, fall back to the existing rule-based implementation (zero-downtime swap)
+- [ ] Extend `writeAIAuditLog` to record actual token counts returned from API responses
+
+### 10.2 — PortfolioAnalyst: Tone Detection & Semantic Risk Extraction
+
+Replace the regex/threshold-based risk detection with Claude inference.
+
+**Inputs to Claude:**
+- Founder update narrative (risks, wins, notes fields)
+- Current and prior period metrics
+- Company name, sector, stage
+
+**New capabilities unlocked by Claude:**
+- **Tone classification** — detect if the founder's narrative is `confident`, `cautious`, `distressed`, or `misleading` (surface as a signal on the UpdateCard and ReviewSheet). Investors often know something is wrong before the metrics show it — Claude can read between the lines.
+- **Semantic risk extraction** — surface risks the founder named obliquely ("we're seeing some churn headwinds" = churn risk) that rule-based keyword matching misses
+- **Win signal amplification** — identify genuine product milestones vs. noise in the wins narrative, scored by strategic importance
+- **Health summary prose** — natural language paragraph vs. the current template sentence
+
+**Output schema** (same as existing `PortfolioAnalystOutput` — no interface changes needed):
+```ts
+{
+  healthSummary: string,          // 2–3 sentence natural language paragraph
+  founderTone: 'confident' | 'cautious' | 'distressed' | 'uncertain',  // NEW field
+  risks: Risk[],
+  opportunities: Opportunity[],
+  suggestedActions: Action[],
+}
+```
+
+**Implementation approach:**
+- Send a single structured prompt requesting JSON output via Claude's tool_use / response format
+- Use a system prompt that describes the VC analyst persona and desired output format
+- Include prompt cache breakpoint on the system prompt so repeated calls within the same batch reuse the cached system context
+- Parse the JSON response back into `PortfolioAnalystOutput`
+
+### 10.3 — TrendDetectionAgent: AI-Generated Trend Narratives
+
+Keep the deterministic pattern detection (it's fast and reliable) but send the evidence cluster to Claude to write:
+- A polished 3–4 sentence trend summary (vs. the current template string)
+- A recommended action for the fund team (e.g. "Coordinate a shared recruiter brief across the 5 hiring companies")
+- A confidence score (0–1) reflecting how strong the evidence is, to be shown in the TrendCard
+
+**Implementation approach:**
+- After the 5 detection patterns run and produce `findings[]`, pass each finding's evidence quotes to Claude in one batched call
+- Claude writes the `summary` field and a new `recommendedAction` field per finding
+- Minimal interface change: add optional `recommendedAction?: string` and `confidenceScore?: number` to `TrendFinding`
+
+### 10.4 — LPReportingAgent: Real Narrative Prose with Tone Control
+
+Currently the LP report is template-driven — the tone selector changes one sentence opener but everything else is identical. With Claude:
+
+- **Full section prose** — each section is written by Claude as a coherent narrative, not assembled from fragments
+- **Tone truly affects style** — `CONSERVATIVE` produces tighter, more hedged language; `GROWTH_FOCUSED` produces more optimistic framing with strategic emphasis
+- **LP-level language** — Claude writes at the register appropriate for institutional LP communication, not plain English
+- **Quote weaving** — win quotes from founder updates are naturally woven into the highlights section rather than appended as blockquotes
+
+**Implementation approach:**
+- One Claude call per section (5 calls total per report), parallelised with `Promise.all`
+- Include prompt caching on the static system prompt (VC LP report writer persona + output rules)
+- The dynamic per-section context (fund metrics, company data) is in the user message, outside the cache
+- Each section returns a markdown string — no schema change to `LPReportOutput`
+
+### 10.5 — MarketIntelligenceAgent: Semantic Company-Signal Matching
+
+Replace keyword-sector matching with Claude:
+
+- **Semantic relevance** — "Stripe's new embedded finance APIs" is relevant to a B2B SaaS company even if "fintech" never appears in its description
+- **Per-company impact summary** — Claude writes a 1-sentence "why this matters for [Company]" vs. the current generic reason string
+- **Signal severity scoring** — Claude assesses whether a signal is a threat, opportunity, or neutral for each matched company
+
+**Implementation approach:**
+- Batch all portfolio companies into one Claude call per signal
+- System prompt describes the portfolio company, the signal, and asks for structured JSON with `relevantCompanyIds`, `impactType`, and per-company impact text
+- Use Claude's extended context to fit all 30 company descriptions in a single call without pagination
+
+### 10.6 — UI: Tone Badge on UpdateCard
+
+- Surface the `founderTone` field (from 10.2) as a badge in the UpdateCard and ReviewSheet
+- Color mapping: `confident` → emerald, `cautious` → amber, `distressed` → red, `uncertain` → slate
+- Show confidence score on TrendCard (from 10.3) as a small percentage chip
+
+---
+
+## Phase 11 — Conversational Portfolio Intelligence
+
+**Goal:** A partner can ask the platform a question in natural language and get a grounded answer from live portfolio data — without leaving the app.
+
+**Why this is the right next step after Phase 10:** Once real Claude calls are running for structured outputs, the investment in prompt engineering and context design transfers directly to a conversational interface. The context is already assembled; it just needs a different output mode.
+
+### 11.1 — Portfolio Q&A (Ask FundOS)
+
+Add a `/ask` panel (or ⌘K extension) where a partner can type questions like:
+
+- "Which companies have runway under 9 months?"
+- "What are the common themes in this quarter's founder updates?"
+- "Compare TechCorp and FinApp's burn trajectory over the last 3 quarters"
+- "Draft an email to the founders of companies in the watchlist"
+
+**Implementation approach:**
+- Server action accepts a natural language `question` and passes it to a new `PortfolioQAAgent`
+- `PortfolioQAAgent` fetches the relevant context (determined by the question type), constructs a grounded prompt, and calls Claude
+- Response is streamed back to the client using the Vercel AI SDK's `streamText` or the Anthropic SDK's streaming API
+- Sources are cited inline (company name + metric + period) so the answer is auditable
+
+**Technical components:**
+- `packages/ai/src/portfolio-qa-agent.ts` — question classification + context retrieval + Claude call
+- `apps/web/src/app/(shell)/ask/page.tsx` — chat-style UI with question input, streaming response, source citations
+- `apps/web/src/app/api/ask/route.ts` — streaming API route
+
+### 11.2 — Meeting Prep Generator
+
+Before a partner takes a call with a founder, they can generate a one-page meeting brief:
+
+- Company health trajectory (last 3 periods)
+- Open risks and their status
+- Pending action items
+- Suggested discussion topics based on the latest update
+- Questions to ask the founder (generated by Claude from the detected risks)
+
+**Implementation approach:**
+- New server action `generateMeetingPrep(companyId)` in `apps/web/src/lib/portfolio.ts`
+- Calls a new `MeetingPrepAgent` in `packages/ai` with full company context
+- Rendered as a printable brief (reuse the print CSS from the LP report)
+- Accessible from the Company Detail page via a "Meeting Prep" button in the header
+
+### 11.3 — LP Letter Personalisation
+
+LPs have different priorities: some care about ESG exposure, some about sector concentration, some about DPI timelines. The existing LP report is one-size-fits-all. With Claude:
+
+- Add a `lpProfile` field to the report configuration form: `{ name, priorities: string[], focusSectors: string[] }`
+- Claude personalises each section of the report to emphasise what this LP cares about
+- The executive summary leads with the metrics most relevant to their stated priorities
+
+**Implementation approach:**
+- Extend `LPReportInput` type with optional `lpProfile` field
+- Pass `lpProfile` to `LPReportingAgent.generate()` — included in the Claude prompt as "this LP's priorities are: ..."
+- Store `lpProfile` as JSON in the `LPReport` model (new optional DB column via migration)
+
+### 11.4 — Intelligent Alert Routing
+
+Currently alerts are surfaced in the dashboard. With Claude inference:
+
+- Route HIGH/CRITICAL risks to the right person on the team (if user profiles exist)
+- Generate a draft message the partner can send to the founder (email copy, not an actual send)
+- Cluster similar alerts across companies to avoid alert fatigue ("3 companies are reporting sales cycle delays — here's a coordinated response template")
+
+**Implementation approach:**
+- New `AlertSummariserAgent` in `packages/ai` — takes the last 7 days of risks and produces a grouped digest
+- Runs nightly as a new Trigger.dev job `summarise-alerts`
+- Digest surfaced in the dashboard as a collapsible "Weekly Intelligence Brief" panel
+
+---
+
+## Environment Requirements (Updated)
+
+```bash
+# Phases 1–9 — no external services needed
+NODE_ENV=development
+
+# Authentication (optional — build passes without; add to enable login)
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_...  # from https://dashboard.clerk.com
+CLERK_SECRET_KEY=sk_live_...
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/
+NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/
+
+# Database
+DATABASE_URL=postgresql://...
+
+# Background workers
+TRIGGER_SECRET_KEY=...
+
+# Phase 10+ — real AI (falls back to rule-based if absent)
+ANTHROPIC_API_KEY=sk-ant-...  # from https://console.anthropic.com
+```

@@ -191,6 +191,9 @@ model Company {
 
   metrics          MetricSnapshot[]
   updates          FounderUpdate[]
+  risks            Risk[]
+  opportunities    Opportunity[]
+  actions          Action[]
   tasks            Task[]
   signals          CompanySignal[]
   trendEvidence    TrendEvidence[]
@@ -278,7 +281,8 @@ model Risk {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
-  update FounderUpdate? @relation(fields: [updateId], references: [id], onDelete: SetNull)
+  company Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  update  FounderUpdate? @relation(fields: [updateId], references: [id], onDelete: SetNull)
 
   @@index([companyId])
   @@index([status])
@@ -297,7 +301,8 @@ model Opportunity {
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 
-  update FounderUpdate? @relation(fields: [updateId], references: [id], onDelete: SetNull)
+  company Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  update  FounderUpdate? @relation(fields: [updateId], references: [id], onDelete: SetNull)
 
   @@index([companyId])
   @@map("opportunities")
@@ -317,7 +322,8 @@ model Action {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
-  update FounderUpdate? @relation(fields: [updateId], references: [id], onDelete: SetNull)
+  company Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  update  FounderUpdate? @relation(fields: [updateId], references: [id], onDelete: SetNull)
 
   @@index([companyId])
   @@index([status])

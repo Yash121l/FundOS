@@ -48,11 +48,8 @@ export function Sidebar({ badges }: SidebarProps) {
   const path = usePathname()
   const { isOpen, close } = useMobileSidebar()
 
-  // Close sidebar on route change (for mobile tap-nav)
-  useEffect(() => {
-    close()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [path])
+  // Close sidebar on route change (for mobile tap-nav); `close` ref is stable
+  useEffect(() => { close() }, [path, close])
 
   return (
     <>

@@ -13,10 +13,12 @@ datasource db {
 // ==================
 
 enum UserRole {
-  PARTNER
-  PORTFOLIO_OPS
-  FINANCE
-  FOUNDER
+  ANALYST      // full internal access (replaces PORTFOLIO_OPS/FINANCE)
+  PARTNER      // read-only internal access
+  PORTFOLIO_OPS // legacy — treated as ANALYST
+  FINANCE      // legacy — treated as ANALYST
+  FOUNDER      // own-company access only
+  LP           // assigned-reports access only
 }
 
 enum Sector {
@@ -157,22 +159,27 @@ enum SignalCategory {
 // ==================
 
 model User {
-  id        String   @id @default(cuid())
-  clerkId   String   @unique
-  email     String   @unique
-  name      String
-  role      UserRole @default(PORTFOLIO_OPS)
-  avatarUrl String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  clerkId     String   @unique
+  email       String   @unique
+  name        String
+  role        UserRole @default(ANALYST)
+  avatarUrl   String?
+  companyId   String?  // set for FOUNDER role: their portfolio company
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   tasks     Task[]
   auditLogs AuditLog[]
-  submittedUpdates FounderUpdate[] @relation("SubmittedUpdates")
-  reviewedUpdates  FounderUpdate[] @relation("ReviewedUpdates")
-  createdTasks     Task[]          @relation("CreatedTasks")
-  generatedReports LPReport[]      @relation("GeneratedReports")
+  submittedUpdates  FounderUpdate[]         @relation("SubmittedUpdates")
+  reviewedUpdates   FounderUpdate[]         @relation("ReviewedUpdates")
+  createdTasks      Task[]                  @relation("CreatedTasks")
+  generatedReports  LPReport[]              @relation("GeneratedReports")
+  lpReportAccess    LPReportAccess[]
+  newsSubmissions   FounderNewsSubmission[] @relation("NewsSubmissions")
+  company           Company?                @relation("FounderUsers", fields: [companyId], references: [id], onDelete: SetNull)
 
+  @@index([companyId])
   @@map("users")
 }
 
@@ -203,6 +210,8 @@ model Company {
   signals          CompanySignal[]
   trendEvidence    TrendEvidence[]
   reportInclusions ReportCompany[]
+  founders         User[]                  @relation("FounderUsers")
+  newsSubmissions  FounderNewsSubmission[]
 
   @@index([sector])
   @@index([healthStatus])
@@ -260,6 +269,9 @@ model FounderUpdate {
   aiProcessedAt     DateTime?
   reviewedAt        DateTime?
   reviewedById      String?
+  source            String?   @default("WEB") // 'WEB' | 'EMAIL'
+  senderEmail       String?
+  rawEmailContent   String?
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
 
@@ -380,8 +392,9 @@ model LPReport {
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
 
-  sections  LPReportSection[]
-  companies ReportCompany[]
+  sections    LPReportSection[]
+  companies   ReportCompany[]
+  lpAccess    LPReportAccess[]
   generatedBy User @relation("GeneratedReports", fields: [generatedById], references: [id], onDelete: Restrict)
 
   @@index([quarter])
@@ -487,6 +500,48 @@ model CompanySignal {
 
   @@id([signalId, companyId])
   @@map("company_signals")
+}
+
+model LPReportAccess {
+  id       String @id @default(cuid())
+  userId   String
+  reportId String
+
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  report LPReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, reportId])
+  @@index([userId])
+  @@index([reportId])
+  @@map("lp_report_access")
+}
+
+enum NewsSubmissionType {
+  CUSTOMER_WIN
+  PARTNERSHIP
+  PRODUCT_LAUNCH
+  HIRING_UPDATE
+  PRESS_MENTION
+  OTHER
+}
+
+model FounderNewsSubmission {
+  id            String              @id @default(cuid())
+  companyId     String
+  submittedById String?
+  type          NewsSubmissionType
+  title         String
+  description   String
+  impact        String?
+  url           String?
+  createdAt     DateTime            @default(now())
+
+  company     Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  submittedBy User?   @relation("NewsSubmissions", fields: [submittedById], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([submittedById])
+  @@map("founder_news_submissions")
 }
 
 model AuditLog {

@@ -4,6 +4,7 @@ import { db } from '@fundos/database'
 import { LPReportingAgent } from '@fundos/ai'
 import { aggregateFundMetrics } from '@fundos/analytics'
 import { revalidatePath } from 'next/cache'
+import { getCurrentUser } from './auth'
 
 // ── Generate a new LP report ─────────────────────────────────
 
@@ -27,13 +28,15 @@ export async function generateReport(
     throw new Error(`Invalid quarter format: ${quarter}`)
   }
 
+  const caller = await getCurrentUser()
+
   // 1. Create report record in GENERATING state
   const report = await db.lPReport.create({
     data: {
       title: lpProfile?.name ? `${quarter} LP Report — ${lpProfile.name}` : `${quarter} LP Report`,
       quarter,
       status: 'GENERATING',
-      generatedById: 'SYSTEM',
+      generatedById: caller?.id ?? 'SYSTEM',
       // lpProfile added via migration 20260604160000_add_lp_profile
       // JSON.parse(JSON.stringify(...)) ensures Prisma Json compatibility
       ...(lpProfile ? { lpProfile: JSON.parse(JSON.stringify(lpProfile)) as never } : {}),

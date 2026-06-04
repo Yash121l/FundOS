@@ -4,45 +4,13 @@ import { db } from '@fundos/database'
 import { tasks } from '@trigger.dev/sdk/v3'
 import { PortfolioAnalyst, writeAIAuditLog } from '@fundos/ai'
 import { computeHealthScore, classifyHealth } from '@fundos/analytics'
-import type { FundraisingStatus, Company, MetricSnapshot, FounderUpdate, PortfolioAnalystInput } from '@fundos/types'
 import { revalidatePath } from 'next/cache'
-import { getCurrentUser } from './auth'
+import { requireFounderAccess } from './auth'
+import type { FundraisingStatus, NewsSubmissionType, Company, MetricSnapshot, FounderUpdate, PortfolioAnalystInput } from '@fundos/types'
 
-// ── Mark an update as reviewed ───────────────────────────────
+// ── Submit a monthly founder update ─────────────────────────
 
-export async function markUpdateReviewed(id: string): Promise<{ success: boolean }> {
-  await db.founderUpdate.update({
-    where: { id },
-    data: { reviewedAt: new Date() },
-  })
-  revalidatePath('/updates')
-  return { success: true }
-}
-
-export async function createTaskFromUpdate(
-  companyId: string,
-  title: string,
-  description: string
-): Promise<{ success: boolean; taskId: string }> {
-  const user = await getCurrentUser()
-  const task = await db.task.create({
-    data: {
-      companyId,
-      title,
-      description: description || null,
-      priority: 'MEDIUM',
-      status: 'TODO',
-      createdById: user?.id ?? 'SYSTEM',
-    },
-  })
-  revalidatePath(`/portfolio`)
-  return { success: true, taskId: task.id }
-}
-
-// ── Submit a new founder update ──────────────────────────────
-
-export interface UpdateFormData {
-  companyId: string
+export interface FounderUpdateFormData {
   period: string
   mrr: number | null
   burnRate: number | null
@@ -56,24 +24,26 @@ export interface UpdateFormData {
   additionalNotes: string
 }
 
-export async function submitFounderUpdate(
-  data: UpdateFormData
+export async function submitFounderMonthlyUpdate(
+  data: FounderUpdateFormData
 ): Promise<{ success: boolean; updateId: string }> {
+  const user = await requireFounderAccess()
+  if (!user.companyId) throw new Error('No company linked to your account')
+
   const {
-    companyId, period, mrr, burnRate, cashBalance, headcount,
+    period, mrr, burnRate, cashBalance, headcount,
     fundraisingStatus, fundraisingNote, wins, risks, hiringNeeds, additionalNotes,
   } = data
 
-  // Auto-compute runway from inputs
-  const runway = cashBalance != null && burnRate != null && burnRate > 0
-    ? Math.round((cashBalance / burnRate) * 10) / 10
-    : null
+  const runway =
+    cashBalance != null && burnRate != null && burnRate > 0
+      ? Math.round((cashBalance / burnRate) * 10) / 10
+      : null
 
-  // Auto-compute MoM growth from previous period metrics
   const previousMetrics = await db.metricSnapshot.findFirst({
-    where: { companyId },
+    where: { companyId: user.companyId },
     orderBy: { period: 'desc' },
-    select: { mrr: true, period: true },
+    select: { mrr: true },
   })
 
   const revenueGrowthMom =
@@ -81,12 +51,14 @@ export async function submitFounderUpdate(
       ? (mrr - previousMetrics.mrr) / previousMetrics.mrr
       : null
 
-  // 1 & 2. Create update + upsert metric snapshot atomically
+  // Write both records atomically so the metric snapshot is never missing
+  // when the background job runs immediately after.
   const [update] = await db.$transaction([
     db.founderUpdate.create({
       data: {
-        companyId,
+        companyId: user.companyId,
         period,
+        submittedById: user.id,
         mrr,
         burnRate,
         cashBalance,
@@ -98,46 +70,81 @@ export async function submitFounderUpdate(
         risks,
         hiringNeeds: hiringNeeds || null,
         additionalNotes: additionalNotes || null,
+        source: 'WEB',
       },
     }),
     db.metricSnapshot.upsert({
-      where: { companyId_period: { companyId, period } },
+      where: { companyId_period: { companyId: user.companyId, period } },
       create: {
-        companyId, period,
+        companyId: user.companyId, period,
         mrr, arr: mrr != null ? mrr * 12 : null,
-        burnRate, cashBalance, runway, headcount,
-        revenueGrowthMom,
+        burnRate, cashBalance, runway, headcount, revenueGrowthMom,
         source: 'FOUNDER_UPDATE',
       },
       update: {
         mrr, arr: mrr != null ? mrr * 12 : null,
-        burnRate, cashBalance, runway, headcount,
-        revenueGrowthMom,
+        burnRate, cashBalance, runway, headcount, revenueGrowthMom,
         source: 'FOUNDER_UPDATE',
       },
     }),
   ])
 
-  // 3. Trigger background worker for AI analysis; fall back to inline when Trigger.dev is not configured
+  // Prefer the Trigger.dev background job; fall back to inline execution when
+  // Trigger.dev is not configured (local dev without TRIGGER_SECRET_KEY).
   try {
-    await tasks.trigger('process-founder-update', { updateId: update.id, companyId })
+    await tasks.trigger('process-founder-update', { updateId: update.id, companyId: user.companyId })
   } catch {
-    await runAnalysisInline(update.id, companyId)
+    await runFounderUpdateAnalysis(update.id, user.companyId)
   }
 
-  revalidatePath('/updates')
-  revalidatePath('/')
-
+  revalidatePath('/founder/dashboard')
   return { success: true, updateId: update.id }
 }
 
-// ── Inline analysis (runs in Next.js process when Trigger.dev is not configured) ──
+// ── Submit a news/signal item ────────────────────────────────
 
-async function runAnalysisInline(updateId: string, companyId: string): Promise<void> {
+export interface FounderNewsFormData {
+  type: NewsSubmissionType
+  title: string
+  description: string
+  impact: string
+  url: string
+}
+
+export async function submitFounderNews(
+  data: FounderNewsFormData
+): Promise<{ success: boolean; id: string }> {
+  const user = await requireFounderAccess()
+  if (!user.companyId) throw new Error('No company linked to your account')
+
+  const { type, title, description, impact, url } = data
+
+  const submission = await db.founderNewsSubmission.create({
+    data: {
+      companyId: user.companyId,
+      submittedById: user.id,
+      type,
+      // Slice at the server boundary — the client validates length too, but
+      // server-side caps are the authoritative limit against malformed requests.
+      title: title.slice(0, 250),
+      description: description.slice(0, 2000),
+      impact: impact ? impact.slice(0, 500) : null,
+      url: url ? url.slice(0, 500) : null,
+    },
+  })
+
+  revalidatePath('/founder/dashboard')
+  return { success: true, id: submission.id }
+}
+
+// ── Inline AI analysis (runs in Next.js process as fallback) ─
+
+async function runFounderUpdateAnalysis(updateId: string, companyId: string): Promise<void> {
   const [update, company, metricsHistory, previousUpdates] = await Promise.all([
     db.founderUpdate.findUniqueOrThrow({ where: { id: updateId } }),
     db.company.findUniqueOrThrow({ where: { id: companyId } }),
     db.metricSnapshot.findMany({ where: { companyId }, orderBy: { period: 'desc' }, take: 6 }),
+    // Last 3 updates for narrative context — excludes the one just created.
     db.founderUpdate.findMany({ where: { companyId, id: { not: updateId } }, orderBy: { period: 'desc' }, take: 3 }),
   ])
 
@@ -150,18 +157,17 @@ async function runAnalysisInline(updateId: string, companyId: string): Promise<v
     previousUpdates: previousUpdates as unknown as FounderUpdate[],
   })
   const duration = Date.now() - startedAt
-  const model = process.env.OPENAI_API_KEY ? 'gpt-4o-mini' : 'rule-based-v1'
 
   await writeAIAuditLog({
     service: 'PortfolioAnalyst',
-    model,
+    model: process.env.OPENAI_API_KEY ? 'gpt-4o-mini' : 'rule-based-v1',
     promptTokens: 0,
     completionTokens: 0,
     durationMs: duration,
     entityType: 'FounderUpdate',
     entityId: updateId,
-    input: { companyId, period: update.period },
-    output: { risksDetected: analysis.risks.length, founderTone: analysis.founderTone },
+    input: { companyId, period: update.period, source: 'FOUNDER_WEB' },
+    output: { risksDetected: analysis.risks.length },
     createdAt: new Date(),
   })
 

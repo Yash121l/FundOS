@@ -2,7 +2,15 @@
 // ENUMS
 // ==================
 
-export type UserRole = 'PARTNER' | 'PORTFOLIO_OPS' | 'FINANCE' | 'FOUNDER'
+export type UserRole = 'ANALYST' | 'PARTNER' | 'PORTFOLIO_OPS' | 'FINANCE' | 'FOUNDER' | 'LP'
+
+export type NewsSubmissionType =
+  | 'CUSTOMER_WIN'
+  | 'PARTNERSHIP'
+  | 'PRODUCT_LAUNCH'
+  | 'HIRING_UPDATE'
+  | 'PRESS_MENTION'
+  | 'OTHER'
 
 export type Sector =
   | 'SAAS'
@@ -91,8 +99,21 @@ export interface User {
   name: string
   role: UserRole
   avatarUrl: string | null
+  companyId: string | null
   createdAt: Date
   updatedAt: Date
+}
+
+export interface FounderNewsSubmission {
+  id: string
+  companyId: string
+  submittedById: string | null
+  type: NewsSubmissionType
+  title: string
+  description: string
+  impact: string | null
+  url: string | null
+  createdAt: Date
 }
 
 export interface Company {
@@ -155,6 +176,9 @@ export interface FounderUpdate {
   aiProcessedAt: Date | null
   reviewedAt: Date | null
   reviewedById: string | null
+  source?: string | null
+  senderEmail?: string | null
+  rawEmailContent?: string | null
   createdAt: Date
   updatedAt: Date
 }

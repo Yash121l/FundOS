@@ -5,6 +5,7 @@ import {
   getRecentUpdates,
   getActiveTrends,
   getRecentAlerts,
+  getLatestAlertDigest,
 } from '@/lib/dashboard'
 import { PortfolioHealthSummary } from '@/components/dashboard/portfolio-health-summary'
 import { FundMetricsRow } from '@/components/dashboard/fund-metrics-row'
@@ -13,11 +14,12 @@ import { RecentUpdatesPanel } from '@/components/dashboard/recent-updates-panel'
 import { TrendsSummaryPanel } from '@/components/dashboard/trends-summary-panel'
 import { HealthDonutChart } from '@/components/dashboard/health-chart'
 import { RecentAlertsPanel } from '@/components/dashboard/recent-alerts-panel'
+import { WeeklyBriefPanel } from '@/components/dashboard/weekly-brief-panel'
 
 export const dynamic = 'force-dynamic'
 
 export default async function DashboardPage() {
-  const [healthCounts, fundMetrics, atRiskCompanies, recentUpdates, activeTrends, recentAlerts] =
+  const [healthCounts, fundMetrics, atRiskCompanies, recentUpdates, activeTrends, recentAlerts, alertDigest] =
     await Promise.all([
       getHealthCounts(),
       getFundMetrics(),
@@ -25,13 +27,14 @@ export default async function DashboardPage() {
       getRecentUpdates(5),
       getActiveTrends(4),
       getRecentAlerts(6),
+      getLatestAlertDigest().catch(() => null),
     ])
 
   return (
     <div className="p-5 space-y-4 max-w-[1440px]">
 
       {/* ── Row 1: Health summary + Fund metrics ─────────────── */}
-      <div className="flex gap-3 items-stretch">
+      <div className="flex flex-col sm:flex-row gap-3 items-stretch">
         <PortfolioHealthSummary data={healthCounts} />
         <FundMetricsRow data={fundMetrics} />
       </div>
@@ -50,6 +53,7 @@ export default async function DashboardPage() {
           <HealthDonutChart data={healthCounts} />
           <TrendsSummaryPanel trends={activeTrends} />
           <RecentAlertsPanel alerts={recentAlerts} />
+          <WeeklyBriefPanel digest={alertDigest} recentAlertsCount={recentAlerts.length} />
         </div>
       </div>
 

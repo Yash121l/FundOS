@@ -10,6 +10,7 @@ import { ActionsSection } from '@/components/portfolio/actions-section'
 import { TasksSection } from '@/components/portfolio/tasks-section'
 import { UpdatesTimeline } from '@/components/portfolio/updates-timeline'
 import { SignalsSection } from '@/components/portfolio/signals-section'
+import { MeetingPrepButton } from '@/components/portfolio/meeting-prep-button'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,6 +36,9 @@ export default async function CompanyDetailPage({ params }: Props) {
     <div className="flex flex-col">
       <div className="sticky top-0 z-10 bg-background">
         <CompanyHeader company={company} latest={latest} prev={prev} />
+        <div className="hidden md:block md:absolute md:top-4 md:right-5 print:hidden">
+          <MeetingPrepButton companyId={company.id} companyName={company.name} />
+        </div>
       </div>
 
       <div className="p-5 space-y-4">
@@ -45,7 +49,7 @@ export default async function CompanyDetailPage({ params }: Props) {
         {healthBreakdown && (
           <div className="rounded-xl border border-border bg-card p-4">
             <p className="text-[13px] font-medium mb-3">Health Score Breakdown</p>
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
                 { label: 'Growth', score: healthBreakdown.components.growth, weight: '35%' },
                 { label: 'Revenue Trend', score: healthBreakdown.components.revenueTrend, weight: '25%' },
@@ -78,7 +82,7 @@ export default async function CompanyDetailPage({ params }: Props) {
         )}
 
         {/* Three-column layout: left (risks + opportunities + signals) | center (actions + tasks) | right (updates) */}
-        <div className="grid grid-cols-[1fr_1fr] gap-4 xl:grid-cols-[1fr_1fr_1fr]">
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr] gap-4 xl:grid-cols-[1fr_1fr_1fr]">
           {/* Column 1 */}
           <div className="space-y-4">
             <RisksSection risks={company.risks} />
@@ -93,7 +97,7 @@ export default async function CompanyDetailPage({ params }: Props) {
           </div>
 
           {/* Column 3 — full width on smaller screens */}
-          <div className="col-span-2 xl:col-span-1">
+          <div className="col-span-1 sm:col-span-2 xl:col-span-1">
             <UpdatesTimeline updates={company.updates} />
           </div>
         </div>

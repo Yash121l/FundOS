@@ -34,13 +34,13 @@ const STATUS = [
 
 export function PortfolioHealthSummary({ data }: Props) {
   return (
-    <div className="flex gap-3">
+    <div className="grid grid-cols-3 gap-3">
       {STATUS.map(({ key, label, dot, value, border, bg }) => (
         <Link
           key={key}
           href={`/portfolio?health=${key}`}
           className={cn(
-            'flex flex-col gap-1 rounded-xl border bg-card px-5 py-4 min-w-[110px] transition-colors',
+            'flex flex-col gap-1 rounded-xl border bg-card px-3 sm:px-5 py-4 transition-colors',
             border,
             bg
           )}

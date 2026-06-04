@@ -184,7 +184,7 @@ export function UpdateForm({ companies, defaultCompanyId }: UpdateFormProps) {
               <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
                 Previous period reference ({prevMetrics.period})
               </p>
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
                   { label: 'MRR', value: formatMrr(prevMetrics.mrr) },
                   { label: 'Burn', value: prevMetrics.burnRate ? formatCurrency(prevMetrics.burnRate, true) : '—' },

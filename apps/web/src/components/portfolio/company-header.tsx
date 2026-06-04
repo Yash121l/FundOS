@@ -63,7 +63,7 @@ export function CompanyHeader({ company: c, latest, prev }: Props) {
   return (
     <div className="border-b border-border bg-card">
       {/* Breadcrumb + company identity */}
-      <div className="px-6 pt-4 pb-3 space-y-2">
+      <div className="px-4 sm:px-6 pt-4 pb-3 space-y-2">
         <div>
           <Link
             href="/portfolio"
@@ -111,7 +111,7 @@ export function CompanyHeader({ company: c, latest, prev }: Props) {
       </div>
 
       {/* Metrics strip */}
-      <div className="px-6 py-3 border-t border-border flex items-start gap-6 overflow-x-auto">
+      <div className="px-4 sm:px-6 py-3 border-t border-border flex items-start gap-6 overflow-x-auto">
         <MetricPill
           label="MRR"
           value={latest?.mrr != null ? formatMrr(latest.mrr) : '—'}

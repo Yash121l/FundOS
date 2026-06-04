@@ -327,34 +327,39 @@ Build in the order that maximizes visible progress and catches structural proble
 
 ---
 
-## Phase 9 — Market Intelligence
+## Phase 9 — Market Intelligence ✅ COMPLETE
 
 **Goal:** `/intelligence` shows a signal feed with portfolio relevance.
 
-### 9.1 — Signal Data
-- [ ] Verify seed has 20–30 MarketSignals linked to portfolio companies
-- [ ] Ensure signals span varied categories (Funding, Competitor, Market, Regulatory)
+### 9.1 — Signal Data ✅
+- [x] Seed has 20 MarketSignals linked to portfolio companies
+- [x] Signals span varied categories (FUNDING_NEWS, COMPETITOR_ACTIVITY, MARKET_TREND, REGULATION, ACQUISITION, IPO)
 
-### 9.2 — Intelligence Feed (`/intelligence`)
-- [ ] Signal card: title, source, published date, 2-sentence summary, related company chips, category badge
-- [ ] Filter bar: All / Funding / Competitor / Market / Regulatory
-- [ ] "Mark as read" interaction
-- [ ] Empty state with helpful copy
+### 9.2 — Intelligence Feed (`/intelligence`) ✅
+- [x] Signal card: title, source, published date, 2-sentence summary, related company chips, category badge
+- [x] Filter bar: All / Funding / Competitor / Market / Regulatory / Acquisition
+- [x] "Mark as read" + "Mark all read" interactions (persisted in localStorage)
+- [x] Show/hide read signals toggle
+- [x] Empty state with helpful copy
+- [x] Signal count in page header
 
-### 9.3 — Signal Architecture
-- [ ] `MarketIntelligenceAgent` stub already exists in `packages/ai`
-- [ ] `ingest-market-signals` Trigger.dev job stub
+### 9.3 — Signal Architecture ✅
+- [x] `MarketIntelligenceAgent` fully implemented in `packages/ai` with sector-keyword matching per category
+- [x] `ingest-market-signals` Trigger.dev job — enriches unlinked signals daily at 6am UTC
+- [x] `getSignals` + `getSignalCounts` server-side data functions in `apps/web/src/lib/signals.ts`
+- [x] 6 unit tests for MarketIntelligenceAgent
 
 ---
 
 ## Quality Gates
 
-### Phases 1–8 ✅ ALL PASSING
+### Phases 1–9 ✅ ALL PASSING
 - `pnpm build` ✅ — clean build, zero errors
 - `pnpm typecheck` ✅ — zero TypeScript errors
-- `pnpm test` ✅ — 130 tests passing (ai 17, analytics 32, shared 57, ui 24)
+- `pnpm lint` ✅ — zero ESLint warnings or errors
+- `pnpm test` ✅ — 136 tests passing (ai 23, analytics 32, shared 57, ui 24)
 - All routes render without errors ✅
-- No unchecked items remaining in Phases 1–8 ✅
+- No unchecked items remaining in Phases 1–9 ✅
 
 ### Phase 8 Quality Gate ✅
 - [x] Report generates without errors for any quarter/company selection
@@ -362,10 +367,11 @@ Build in the order that maximizes visible progress and catches structural proble
 - [x] Markdown export downloads correctly
 - [x] PDF export prints cleanly via window.print()
 
-### After Phase 9
-- [ ] Signal feed shows seed signals correctly
-- [ ] Company relevance chips link to company detail
-- [ ] Filters work across all categories
+### Phase 9 Quality Gate ✅
+- [x] Signal feed shows seed signals correctly
+- [x] Company relevance chips link to company detail
+- [x] Filters work across all categories
+- [x] Mark as read persists across page reloads
 
 ---
 

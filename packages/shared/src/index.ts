@@ -170,3 +170,25 @@ export function sectorLabel(sector: string): string {
     default: return sector
   }
 }
+
+// ==================
+// PERIOD UTILITIES
+// ==================
+
+export function getPeriodOptions(count = 6): string[] {
+  const options: string[] = []
+  let p = currentPeriod()
+  for (let i = 0; i < count; i++) {
+    options.push(p)
+    p = previousPeriod(p)
+  }
+  return options
+}
+
+export function suggestNextPeriod(filedPeriods: string[]): string {
+  const options = getPeriodOptions(3)
+  for (const option of options) {
+    if (!filedPeriods.includes(option)) return option
+  }
+  return currentPeriod()
+}

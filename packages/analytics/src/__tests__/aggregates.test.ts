@@ -3,7 +3,7 @@ import { aggregateFundMetrics } from '../index'
 import type { CompanyWithMetrics, MetricSnapshot } from '@fundos/types'
 
 function makeCompany(
-  overrides: Partial<CompanyWithMetrics> & { latestMetrics?: Partial<MetricSnapshot> | null } = {}
+  overrides: Omit<Partial<CompanyWithMetrics>, 'latestMetrics'> & { latestMetrics?: Partial<MetricSnapshot> | null } = {}
 ): CompanyWithMetrics {
   const { latestMetrics: metricsOverride, ...rest } = overrides
   const base: CompanyWithMetrics = {

@@ -1,48 +1,31 @@
-import { Skeleton } from '@fundos/ui'
+import Link from 'next/link'
+import { getUpdatesForInbox } from '@/lib/updates'
+import { Inbox } from '@/components/updates/inbox'
 
-export default function UpdatesPage() {
+export const dynamic = 'force-dynamic'
+
+export default async function UpdatesPage() {
+  const updates = await getUpdatesForInbox().catch(() => [])
+
   return (
-    <div className="p-6 max-w-3xl">
-      {/* Filters */}
-      <div className="flex items-center gap-2 mb-4">
-        <Skeleton className="h-8 w-36 rounded-lg" />
-        <Skeleton className="h-8 w-28 rounded-lg" />
-        <div className="flex-1" />
-        <Skeleton className="h-8 w-32 rounded-lg" />
+    <div className="p-5 max-w-3xl">
+      {/* Page header */}
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <h1 className="text-[15px] font-semibold text-foreground">Founder Updates</h1>
+          <p className="text-[12px] text-muted-foreground mt-0.5">
+            Review portfolio company updates and AI analysis
+          </p>
+        </div>
+        <Link
+          href="/updates/new"
+          className="h-8 px-3.5 rounded-md bg-primary text-primary-foreground text-[12px] font-medium hover:bg-primary/90 transition-colors inline-flex items-center gap-1.5"
+        >
+          + New Update
+        </Link>
       </div>
 
-      <div className="space-y-3">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="rounded-lg border border-border bg-card p-4 space-y-3">
-            <div className="flex items-center gap-3">
-              <Skeleton className="h-7 w-7 rounded-md flex-shrink-0" />
-              <div className="flex-1">
-                <Skeleton className="h-3.5 w-36" />
-                <Skeleton className="h-3 w-24 mt-1" />
-              </div>
-              <Skeleton className="h-5 w-16 rounded-md" />
-              <Skeleton className="h-5 w-20 rounded-md" />
-            </div>
-            <div className="grid grid-cols-4 gap-3">
-              {['MRR', 'Growth', 'Burn', 'Runway'].map((m) => (
-                <div key={m}>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{m}</p>
-                  <Skeleton className="h-4 w-14 mt-1" />
-                </div>
-              ))}
-            </div>
-            <Skeleton className="h-10 w-full rounded" />
-            <div className="flex gap-2">
-              <Skeleton className="h-5 w-20 rounded-full" />
-              <Skeleton className="h-5 w-24 rounded-full" />
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <p className="text-center text-[12px] text-muted-foreground/50 pt-6">
-        Founder Updates Inbox — Phase 6
-      </p>
+      <Inbox initialUpdates={updates} />
     </div>
   )
 }

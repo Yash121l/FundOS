@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^6.11.0",
+    "@fundos/ai": "workspace:*",
     "@fundos/analytics": "workspace:*",
     "@fundos/database": "workspace:*",
     "@prisma/client": "^6.2.1",

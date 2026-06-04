@@ -376,6 +376,7 @@ model LPReport {
   markdownContent     String?
   pdfUrl              String?
   fundMetricsSnapshot Json?
+  lpProfile           Json?
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
 

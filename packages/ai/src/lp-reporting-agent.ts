@@ -1,4 +1,4 @@
-import type { LPReportInput, LPReportOutput, CompanyWithMetrics } from '@fundos/types'
+import type { LPReportInput, LPReportOutput, CompanyWithMetrics, LPProfile } from '@fundos/types'
 import { getOpenAIClient, MODEL_SMART } from './client'
 
 const SYSTEM_PROMPT = `You are an experienced LP report writer for a venture capital fund.
@@ -15,6 +15,16 @@ function toneInstruction(tone: Tone): string {
   return 'Use a balanced, professional tone appropriate for a quarterly LP letter.'
 }
 
+function lpProfileInstruction(profile: LPProfile | undefined): string {
+  if (!profile) return ''
+  const parts: string[] = []
+  if (profile.name) parts.push(`This report is personalised for ${profile.name}.`)
+  if (profile.priorities.length > 0) parts.push(`Their key priorities are: ${profile.priorities.join(', ')}.`)
+  if (profile.focusSectors.length > 0) parts.push(`They have particular interest in these sectors: ${profile.focusSectors.join(', ')}.`)
+  if (parts.length === 0) return ''
+  return `\n\nLP PERSONALISATION: ${parts.join(' ')} Weight the content accordingly — lead with metrics and narratives most relevant to their stated priorities.`
+}
+
 export class LPReportingAgent {
   async generate(input: LPReportInput): Promise<LPReportOutput> {
     const client = getOpenAIClient()
@@ -28,7 +38,7 @@ export class LPReportingAgent {
     input: LPReportInput,
     client: ReturnType<typeof getOpenAIClient> & {}
   ): Promise<LPReportOutput> {
-    const { quarter, companies, recentUpdates, fundMetrics, tone = 'STANDARD' } = input
+    const { quarter, companies, recentUpdates, fundMetrics, tone = 'STANDARD', lpProfile } = input
 
     const active = companies.filter((c) => c.status === 'ACTIVE')
     const healthy = active.filter((c) => c.healthStatus === 'HEALTHY')
@@ -62,7 +72,7 @@ Portfolio Health: ${healthy.length} Healthy / ${watchlist.length} Watchlist / ${
         }).join('\n')
       : 'No founder updates submitted this quarter.'
 
-    const toneNote = toneInstruction(tone)
+    const toneNote = toneInstruction(tone) + lpProfileInstruction(lpProfile)
 
     const sectionTokens: Record<string, number> = {
       'Executive Summary': 600,
@@ -81,6 +91,9 @@ Tone: ${toneNote}
 
 Fund data:
 ${fundContext}
+
+Recent founder update highlights:
+${updateContext}
 
 Cover: overall portfolio performance, key metrics, health distribution, and any headline risks or wins. Include a brief health distribution table.`,
       },

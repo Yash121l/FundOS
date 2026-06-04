@@ -11,12 +11,17 @@ export interface GenerateReportConfig {
   quarter: string
   companyIds: string[]
   tone: 'STANDARD' | 'CONSERVATIVE' | 'GROWTH_FOCUSED'
+  lpProfile?: {
+    name: string
+    priorities: string[]
+    focusSectors: string[]
+  }
 }
 
 export async function generateReport(
   config: GenerateReportConfig
 ): Promise<{ success: boolean; reportId: string }> {
-  const { quarter, companyIds, tone } = config
+  const { quarter, companyIds, tone, lpProfile } = config
 
   if (!/^\d{4}-Q[1-4]$/.test(quarter)) {
     throw new Error(`Invalid quarter format: ${quarter}`)
@@ -25,10 +30,13 @@ export async function generateReport(
   // 1. Create report record in GENERATING state
   const report = await db.lPReport.create({
     data: {
-      title: `${quarter} LP Report`,
+      title: lpProfile?.name ? `${quarter} LP Report — ${lpProfile.name}` : `${quarter} LP Report`,
       quarter,
       status: 'GENERATING',
       generatedById: 'SYSTEM',
+      // lpProfile added via migration 20260604160000_add_lp_profile
+      // JSON.parse(JSON.stringify(...)) ensures Prisma Json compatibility
+      ...(lpProfile ? { lpProfile: JSON.parse(JSON.stringify(lpProfile)) as never } : {}),
     },
   })
 
@@ -66,9 +74,17 @@ export async function generateReport(
     const fundMetrics = aggregateFundMetrics(companies)
 
     // 5. Run LPReportingAgent
-    const model = process.env.OPENAI_API_KEY ? 'gpt-4o' : 'rule-based-v1'
     const agent = new LPReportingAgent()
-    const result = await agent.generate({ quarter, companies, recentUpdates, fundMetrics, tone })
+    const generateStart = Date.now()
+    const result = await agent.generate({ quarter, companies, recentUpdates, fundMetrics, tone, lpProfile })
+    console.info('[AI] lp-reporting generate', {
+      quarter,
+      tone,
+      lpName: lpProfile?.name ?? null,
+      companyCount: companyIds.length,
+      durationMs: Date.now() - generateStart,
+      sectionCount: result.sections.length,
+    })
 
     // 6. Persist sections
     await db.lPReportSection.createMany({

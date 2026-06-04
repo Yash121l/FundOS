@@ -22,6 +22,17 @@ const STATUS_BADGE: Record<string, string> = {
   AT_RISK: 'bg-red-500/10 text-red-400 border-red-500/20',
 }
 
+const LP_PRIORITIES = [
+  'Growth trajectory',
+  'Downside protection',
+  'ESG exposure',
+  'DPI timeline',
+  'Follow-on reserves',
+  'Sector diversification',
+]
+
+const ALL_SECTORS = ['SAAS', 'FINTECH', 'AI', 'DEVTOOLS', 'CLIMATETECH', 'HEALTHTECH', 'MARKETPLACE', 'INFRASTRUCTURE']
+
 export function ReportConfigForm({ quarters, companies }: ReportConfigFormProps) {
   const router = useRouter()
   const [, startTransition] = useTransition()
@@ -30,6 +41,10 @@ export function ReportConfigForm({ quarters, companies }: ReportConfigFormProps)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set(companies.map((c) => c.id)))
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showLpProfile, setShowLpProfile] = useState(false)
+  const [lpName, setLpName] = useState('')
+  const [lpPriorities, setLpPriorities] = useState<Set<string>>(new Set())
+  const [lpSectors, setLpSectors] = useState<Set<string>>(new Set())
 
   function toggleCompany(id: string) {
     setSelectedIds((prev) => {
@@ -50,12 +65,23 @@ export function ReportConfigForm({ quarters, companies }: ReportConfigFormProps)
     if (selectedIds.size === 0) { setError('Select at least one company.'); return }
     setError(null)
     setGenerating(true)
+
+    const lpProfile =
+      showLpProfile && (lpName.trim() || lpPriorities.size > 0 || lpSectors.size > 0)
+        ? {
+            name: lpName.trim(),
+            priorities: [...lpPriorities],
+            focusSectors: [...lpSectors],
+          }
+        : undefined
+
     startTransition(async () => {
       try {
         const result = await generateReport({
           quarter,
           companyIds: [...selectedIds],
           tone,
+          lpProfile,
         })
         router.push(`/lp-reports/${result.reportId}`)
       } catch (err) {
@@ -127,6 +153,94 @@ export function ReportConfigForm({ quarters, companies }: ReportConfigFormProps)
             </label>
           ))}
         </div>
+      </div>
+
+      {/* LP Profile */}
+      <div className="border border-border rounded-xl overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setShowLpProfile((v) => !v)}
+          aria-expanded={showLpProfile}
+          aria-controls="lp-profile-content"
+          className="w-full flex items-center justify-between px-4 py-3 hover:bg-secondary/30 transition-colors"
+        >
+          <div className="text-left">
+            <p className="text-[12px] font-medium text-foreground">LP Profile</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              {showLpProfile ? 'Personalise the report for a specific LP' : 'Optional — personalise for a specific investor'}
+            </p>
+          </div>
+          <span className="text-[11px] text-muted-foreground">{showLpProfile ? '−' : '+'}</span>
+        </button>
+
+        {showLpProfile && (
+          <div id="lp-profile-content" className="border-t border-border px-4 py-4 space-y-4 bg-secondary/10">
+            <div>
+              <label className="block text-[11px] font-medium text-muted-foreground mb-1">LP Name</label>
+              <input
+                type="text"
+                placeholder="e.g. Sequoia Capital, Tiger Global…"
+                value={lpName}
+                onChange={(e) => setLpName(e.target.value)}
+                className="input w-full"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-medium text-muted-foreground mb-1.5">Key Priorities</label>
+              <div className="flex flex-wrap gap-1.5">
+                {LP_PRIORITIES.map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() =>
+                      setLpPriorities((prev) => {
+                        const next = new Set(prev)
+                        if (next.has(p)) next.delete(p)
+                        else next.add(p)
+                        return next
+                      })
+                    }
+                    className={`text-[11px] px-2 py-1 rounded-md border transition-colors ${
+                      lpPriorities.has(p)
+                        ? 'bg-primary/10 border-primary/30 text-primary'
+                        : 'border-border bg-card text-muted-foreground hover:bg-secondary/50'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-medium text-muted-foreground mb-1.5">Focus Sectors</label>
+              <div className="flex flex-wrap gap-1.5">
+                {ALL_SECTORS.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() =>
+                      setLpSectors((prev) => {
+                        const next = new Set(prev)
+                        if (next.has(s)) next.delete(s)
+                        else next.add(s)
+                        return next
+                      })
+                    }
+                    className={`text-[11px] px-2 py-1 rounded-md border transition-colors ${
+                      lpSectors.has(s)
+                        ? 'bg-primary/10 border-primary/30 text-primary'
+                        : 'border-border bg-card text-muted-foreground hover:bg-secondary/50'
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {error && <p className="text-[12px] text-destructive">{error}</p>}

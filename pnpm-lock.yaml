@@ -197,6 +197,9 @@ importers:
 
   packages/ai:
     dependencies:
+      '@fundos/database':
+        specifier: workspace:^
+        version: link:../database
       '@fundos/types':
         specifier: workspace:*
         version: link:../types

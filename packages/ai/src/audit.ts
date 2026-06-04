@@ -11,6 +11,27 @@ export async function writeAIAuditLog(entry: AIAuditEntry): Promise<void> {
       entityId: entry.entityId,
     })
   }
-  // In production, this writes to the AuditLog table via the database package.
-  // Implemented in Phase 6 when workers are active.
+
+  try {
+    // Lazy import to avoid bundling the DB client in environments that don't need it
+    const { db } = await import('@fundos/database')
+    await db.auditLog.create({
+      data: {
+        action: 'AI_ANALYSIS',
+        entityType: entry.entityType,
+        entityId: entry.entityId,
+        metadata: JSON.parse(JSON.stringify({
+          service: entry.service,
+          model: entry.model,
+          promptTokens: entry.promptTokens,
+          completionTokens: entry.completionTokens,
+          durationMs: entry.durationMs,
+          input: entry.input,
+          output: entry.output,
+        })),
+      },
+    })
+  } catch {
+    // Silently swallow — audit log failure must never crash the main flow
+  }
 }

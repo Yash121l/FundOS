@@ -15,6 +15,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@fundos/database": "workspace:^",
     "@fundos/types": "workspace:*",
     "ai": "^4.1.62",
     "openai": "^4.86.2",

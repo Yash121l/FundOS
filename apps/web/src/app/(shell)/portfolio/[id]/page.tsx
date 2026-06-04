@@ -4,6 +4,9 @@ import { computeHealthScore } from '@fundos/analytics'
 import { CompanyHeader } from '@/components/portfolio/company-header'
 import { MetricsChart } from '@/components/portfolio/metrics-chart'
 import { RisksSection } from '@/components/portfolio/risks-section'
+import { OpportunitiesSection } from '@/components/portfolio/opportunities-section'
+import { ActionsSection } from '@/components/portfolio/actions-section'
+import { TasksSection } from '@/components/portfolio/tasks-section'
 import { UpdatesTimeline } from '@/components/portfolio/updates-timeline'
 import { SignalsSection } from '@/components/portfolio/signals-section'
 
@@ -24,7 +27,6 @@ export default async function CompanyDetailPage({ params }: Props) {
   const latest = metrics[0] ?? null
   const prev = metrics[1] ?? null
 
-  // Compute health score breakdown from recent metric history
   const healthBreakdown = metrics.length > 0
     ? computeHealthScore(
         metrics.map((m) => ({
@@ -40,12 +42,10 @@ export default async function CompanyDetailPage({ params }: Props) {
 
   return (
     <div className="flex flex-col">
-      {/* Sticky company header */}
       <div className="sticky top-0 z-10 bg-background">
         <CompanyHeader company={company} latest={latest} prev={prev} />
       </div>
 
-      {/* Content */}
       <div className="p-5 space-y-4">
         {/* MRR + Burn chart */}
         <MetricsChart data={metrics} />
@@ -71,8 +71,7 @@ export default async function CompanyDetailPage({ params }: Props) {
                       className="h-full rounded-full transition-all"
                       style={{
                         width: `${score}%`,
-                        backgroundColor:
-                          score >= 65 ? '#34d399' : score >= 40 ? '#fbbf24' : '#f87171',
+                        backgroundColor: score >= 65 ? '#34d399' : score >= 40 ? '#fbbf24' : '#f87171',
                       }}
                     />
                   </div>
@@ -87,13 +86,25 @@ export default async function CompanyDetailPage({ params }: Props) {
           </div>
         )}
 
-        {/* Two-column: risks + updates */}
-        <div className="grid grid-cols-[1fr_1fr] gap-4">
+        {/* Three-column layout: left (risks + opportunities + signals) | center (actions + tasks) | right (updates) */}
+        <div className="grid grid-cols-[1fr_1fr] gap-4 xl:grid-cols-[1fr_1fr_1fr]">
+          {/* Column 1 */}
           <div className="space-y-4">
             <RisksSection risks={company.risks} />
+            <OpportunitiesSection opportunities={company.opportunities} />
+          </div>
+
+          {/* Column 2 */}
+          <div className="space-y-4">
+            <ActionsSection actions={company.actions} />
+            <TasksSection tasks={company.tasks} />
             <SignalsSection signals={companySignals} />
           </div>
-          <UpdatesTimeline updates={company.updates} />
+
+          {/* Column 3 — full width on smaller screens */}
+          <div className="col-span-2 xl:col-span-1">
+            <UpdatesTimeline updates={company.updates} />
+          </div>
         </div>
       </div>
     </div>

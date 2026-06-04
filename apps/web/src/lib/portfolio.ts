@@ -110,6 +110,44 @@ export async function getCompanyBySlug(slug: string) {
           resolvedAt: true,
         },
       },
+      opportunities: {
+        where: { status: { not: 'DISMISSED' } },
+        orderBy: { createdAt: 'desc' },
+        take: 6,
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          category: true,
+          status: true,
+        },
+      },
+      actions: {
+        where: { status: { not: 'DISMISSED' } },
+        orderBy: [{ priority: 'desc' }, { createdAt: 'desc' }],
+        take: 8,
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          priority: true,
+          status: true,
+          dueDate: true,
+        },
+      },
+      tasks: {
+        where: { status: { not: 'CANCELLED' } },
+        orderBy: [{ priority: 'desc' }, { createdAt: 'desc' }],
+        take: 8,
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          priority: true,
+          status: true,
+          dueDate: true,
+        },
+      },
     },
   })
 }

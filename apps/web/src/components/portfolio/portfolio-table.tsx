@@ -8,9 +8,10 @@ import {
   getSortedRowModel,
   type ColumnDef,
   type SortingState,
+  type VisibilityState,
   flexRender,
 } from '@tanstack/react-table'
-import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { ArrowUpDown, ArrowUp, ArrowDown, Columns3 } from 'lucide-react'
 import { HealthBadge, SectorBadge } from '@fundos/ui'
 import { formatMrr, formatPercent, formatRunway, stageLabel } from '@fundos/shared'
 import { cn } from '@/lib/utils'
@@ -203,10 +204,14 @@ interface Props {
   initialHealth?: string
 }
 
+const HIDEABLE_COLUMNS = ['sector', 'stage', 'arr', 'burn', 'runway', 'headcount', 'healthScore']
+
 export function PortfolioTable({ data, initialHealth = '' }: Props) {
   const router = useRouter()
   const [sorting, setSorting] = useState<SortingState>([{ id: 'healthScore', desc: false }])
   const [filters, setFilters] = useState<Filters>({ search: '', sector: '', stage: '', health: initialHealth })
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
+  const [showColMenu, setShowColMenu] = useState(false)
   const [activeRow, setActiveRow] = useState(0)
   const tableRef = useRef<HTMLTableElement>(null)
 
@@ -217,8 +222,9 @@ export function PortfolioTable({ data, initialHealth = '' }: Props) {
     columns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    state: { sorting },
+    state: { sorting, columnVisibility },
     onSortingChange: setSorting,
+    onColumnVisibilityChange: setColumnVisibility,
   })
 
   const rows = table.getRowModel().rows
@@ -301,6 +307,37 @@ export function PortfolioTable({ data, initialHealth = '' }: Props) {
         <span className="text-[12px] text-muted-foreground tabular-nums">
           {filteredData.length} of {data.length}
         </span>
+
+        {/* Column visibility toggle */}
+        <div className="relative">
+          <button
+            onClick={() => setShowColMenu((v) => !v)}
+            className="h-8 px-2.5 rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors flex items-center gap-1.5 text-[12px]"
+          >
+            <Columns3 size={13} />
+            Columns
+          </button>
+          {showColMenu && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setShowColMenu(false)} />
+              <div className="absolute right-0 top-9 z-20 rounded-lg border border-border bg-card shadow-lg p-2 min-w-[140px] space-y-0.5">
+                {table.getAllLeafColumns()
+                  .filter((col) => HIDEABLE_COLUMNS.includes(col.id))
+                  .map((col) => (
+                    <label key={col.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-secondary/50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={col.getIsVisible()}
+                        onChange={col.getToggleVisibilityHandler()}
+                        className="accent-primary"
+                      />
+                      <span className="text-[12px] text-foreground capitalize">{col.id}</span>
+                    </label>
+                  ))}
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Table */}

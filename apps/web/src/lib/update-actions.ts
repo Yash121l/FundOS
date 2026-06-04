@@ -17,6 +17,25 @@ export async function markUpdateReviewed(id: string): Promise<{ success: boolean
   return { success: true }
 }
 
+export async function createTaskFromUpdate(
+  companyId: string,
+  title: string,
+  description: string
+): Promise<{ success: boolean; taskId: string }> {
+  const task = await db.task.create({
+    data: {
+      companyId,
+      title,
+      description: description || null,
+      priority: 'MEDIUM',
+      status: 'TODO',
+      createdById: 'SYSTEM', // replaced with Clerk userId when auth is wired
+    },
+  })
+  revalidatePath(`/portfolio`)
+  return { success: true, taskId: task.id }
+}
+
 // ── Submit a new founder update ──────────────────────────────
 
 export interface UpdateFormData {
@@ -147,7 +166,21 @@ export async function submitFounderUpdate(
     })
   }
 
-  // 6. Re-compute and persist updated health score
+  // 6. Persist suggested actions
+  if (analysis.suggestedActions.length > 0) {
+    await db.action.createMany({
+      data: analysis.suggestedActions.map((a: PortfolioAnalystOutput['suggestedActions'][number]) => ({
+        companyId,
+        updateId: update.id,
+        title: a.title,
+        description: a.description ?? null,
+        priority: a.priority,
+        status: a.status,
+      })),
+    })
+  }
+
+  // 8. Re-compute and persist updated health score
   const healthResult = computeHealthScore(metricsHistory as never)
   const healthStatus = classifyHealth(healthResult.score)
 
@@ -159,13 +192,13 @@ export async function submitFounderUpdate(
     },
   })
 
-  // Update MetricSnapshot with new health score
+  // 9. Update MetricSnapshot with new health score
   await db.metricSnapshot.updateMany({
     where: { companyId, period },
     data: { healthScore: healthResult.score },
   })
 
-  // 7. Write AI summary back to the update
+  // 10. Write AI summary back to the update
   await db.founderUpdate.update({
     where: { id: update.id },
     data: {

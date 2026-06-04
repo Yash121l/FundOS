@@ -1,4 +1,5 @@
 import { getTrendsForPage, getTrendCounts, type TrendFilter } from '@/lib/trends'
+import { getDismissedTrends } from '@/lib/trend-actions'
 import { TrendsList } from '@/components/trends/trends-list'
 
 export const dynamic = 'force-dynamic'
@@ -11,14 +12,14 @@ export default async function TrendsPage({ searchParams }: Props) {
   const params = await searchParams
   const filter = (params.category?.toUpperCase() as TrendFilter | undefined) ?? 'ALL'
 
-  const [trends, counts] = await Promise.all([
+  const [trends, counts, dismissed] = await Promise.all([
     getTrendsForPage(filter).catch(() => []),
     getTrendCounts().catch(() => ({ active: 0, dismissed: 0 })),
+    getDismissedTrends().catch(() => []),
   ])
 
   return (
     <div className="p-5 max-w-3xl">
-      {/* Header */}
       <div className="flex items-start justify-between mb-5">
         <div>
           <h1 className="text-[15px] font-semibold text-foreground">Trend Detection</h1>
@@ -32,7 +33,7 @@ export default async function TrendsPage({ searchParams }: Props) {
         </div>
       </div>
 
-      <TrendsList initialTrends={trends} initialFilter={filter} />
+      <TrendsList initialTrends={trends} initialFilter={filter} dismissedTrends={dismissed} />
     </div>
   )
 }

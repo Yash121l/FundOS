@@ -162,6 +162,37 @@ export async function getActiveTrends(limit = 4) {
 
 export type ActiveTrend = Awaited<ReturnType<typeof getActiveTrends>>[number]
 
+// ── Recent alerts ─────────────────────────────────────────────
+// Alerts = recently created HIGH/CRITICAL risks (last 14 days)
+// + companies whose healthStatus recently changed to AT_RISK
+
+export async function getRecentAlerts(limit = 6) {
+  const since = new Date()
+  since.setDate(since.getDate() - 14)
+
+  const recentRisks = await db.risk.findMany({
+    where: {
+      severity: { in: ['HIGH', 'CRITICAL'] },
+      status: 'OPEN',
+      createdAt: { gte: since },
+    },
+    orderBy: [{ severity: 'desc' }, { createdAt: 'desc' }],
+    take: limit,
+    select: {
+      id: true,
+      title: true,
+      severity: true,
+      category: true,
+      createdAt: true,
+      company: { select: { id: true, name: true, slug: true, healthStatus: true } },
+    },
+  })
+
+  return recentRisks
+}
+
+export type RecentAlert = Awaited<ReturnType<typeof getRecentAlerts>>[number]
+
 // ── Sidebar badge counts ─────────────────────────────────────
 
 export async function getSidebarBadges() {

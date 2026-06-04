@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { HealthBadge } from '@fundos/ui'
 import {
   formatMrr, formatCurrency, formatRunway, formatDate,
@@ -8,6 +8,7 @@ import {
   severityLabel, formatRelativeTime
 } from '@fundos/shared'
 import { cn } from '@/lib/utils'
+import { createTaskFromUpdate } from '@/lib/update-actions'
 import type { UpdateDetail } from '@/lib/updates'
 
 interface ReviewSheetProps {
@@ -18,15 +19,41 @@ interface ReviewSheetProps {
 
 export function ReviewSheet({ update, onClose, onMarkReviewed }: ReviewSheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null)
+  const [showTaskForm, setShowTaskForm] = useState(false)
+  const [taskTitle, setTaskTitle] = useState('')
+  const [taskDesc, setTaskDesc] = useState('')
+  const [taskCreated, setTaskCreated] = useState(false)
+  const [, startTransition] = useTransition()
 
   useEffect(() => {
     if (!update) return
+    setShowTaskForm(false)
+    setTaskTitle('')
+    setTaskDesc('')
+    setTaskCreated(false)
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') {
+        if (showTaskForm) { setShowTaskForm(false); return }
+        onClose()
+      }
+      if (e.key === 't' && !showTaskForm && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
+        setShowTaskForm(true)
+      }
     }
     document.addEventListener('keydown', handleKey)
     return () => document.removeEventListener('keydown', handleKey)
-  }, [update, onClose])
+  }, [update, onClose, showTaskForm])
+
+  function handleCreateTask() {
+    if (!taskTitle.trim() || !update) return
+    startTransition(async () => {
+      await createTaskFromUpdate(update.company.id, taskTitle.trim(), taskDesc.trim())
+      setTaskCreated(true)
+      setShowTaskForm(false)
+      setTaskTitle('')
+      setTaskDesc('')
+    })
+  }
 
   if (!update) return null
 
@@ -169,8 +196,39 @@ export function ReviewSheet({ update, onClose, onMarkReviewed }: ReviewSheetProp
           )}
         </div>
 
+        {/* Create task inline form */}
+        {showTaskForm && (
+          <div className="px-5 py-3.5 border-t border-border bg-secondary/20 space-y-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">New Task</p>
+            <input
+              autoFocus
+              type="text"
+              placeholder="Task title"
+              value={taskTitle}
+              onChange={(e) => setTaskTitle(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleCreateTask()}
+              className="input w-full"
+            />
+            <textarea
+              rows={2}
+              placeholder="Description (optional)"
+              value={taskDesc}
+              onChange={(e) => setTaskDesc(e.target.value)}
+              className="input w-full resize-none"
+            />
+            <div className="flex gap-2">
+              <button onClick={handleCreateTask} className="h-7 px-3 rounded-md bg-primary text-primary-foreground text-[11px] font-medium hover:bg-primary/90 transition-colors">
+                Create Task
+              </button>
+              <button onClick={() => setShowTaskForm(false)} className="h-7 px-3 rounded-md border border-border text-[11px] text-muted-foreground hover:bg-accent transition-colors">
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Footer */}
-        <div className="px-5 py-3.5 border-t border-border flex items-center gap-3">
+        <div className="px-5 py-3.5 border-t border-border flex items-center gap-2">
           {!update.reviewedAt ? (
             <button
               onClick={() => onMarkReviewed(update.id)}
@@ -179,13 +237,21 @@ export function ReviewSheet({ update, onClose, onMarkReviewed }: ReviewSheetProp
               Mark Reviewed
             </button>
           ) : (
-            <p className="text-[12px] text-muted-foreground">
+            <p className="text-[12px] text-muted-foreground flex-1">
               Reviewed {formatDate(update.reviewedAt)}
             </p>
           )}
+          {taskCreated && <span className="text-[11px] text-emerald-400">✓ Task created</span>}
+          <button
+            onClick={() => setShowTaskForm((v) => !v)}
+            className="h-8 px-3 rounded-md border border-border text-[12px] font-medium text-muted-foreground hover:bg-accent transition-colors"
+            title="Create task (t)"
+          >
+            + Task
+          </button>
           <button
             onClick={onClose}
-            className="h-8 px-4 rounded-md border border-border text-[12px] font-medium text-muted-foreground hover:bg-accent transition-colors"
+            className="h-8 px-3 rounded-md border border-border text-[12px] font-medium text-muted-foreground hover:bg-accent transition-colors"
           >
             Close
           </button>

@@ -2,12 +2,13 @@
 
 import { useState, useTransition } from 'react'
 import { TrendCard } from './trend-card'
-import { runTrendAnalysis } from '@/lib/trend-actions'
+import { runTrendAnalysis, restoreTrend, type DismissedTrend } from '@/lib/trend-actions'
 import type { TrendItem, TrendFilter } from '@/lib/trends'
 
 interface TrendsListProps {
   initialTrends: TrendItem[]
   initialFilter: TrendFilter
+  dismissedTrends: DismissedTrend[]
 }
 
 const FILTERS: { label: string; value: TrendFilter }[] = [
@@ -19,9 +20,11 @@ const FILTERS: { label: string; value: TrendFilter }[] = [
   { label: 'Operational', value: 'OPERATIONAL' },
 ]
 
-export function TrendsList({ initialTrends, initialFilter }: TrendsListProps) {
+export function TrendsList({ initialTrends, initialFilter, dismissedTrends: initialDismissed }: TrendsListProps) {
   const [trends, setTrends] = useState<TrendItem[]>(initialTrends)
+  const [dismissed, setDismissed] = useState<DismissedTrend[]>(initialDismissed)
   const [filter, setFilter] = useState<TrendFilter>(initialFilter)
+  const [showDismissed, setShowDismissed] = useState(false)
   const [isRunning, startTransition] = useTransition()
   const [runResult, setRunResult] = useState<string | null>(null)
 
@@ -86,6 +89,43 @@ export function TrendsList({ initialTrends, initialFilter }: TrendsListProps) {
           {filtered.map((trend) => (
             <TrendCard key={trend.id} trend={trend} onDismissed={handleDismissed} />
           ))}
+        </div>
+      )}
+
+      {/* Dismissed trends collapsible */}
+      {dismissed.length > 0 && (
+        <div className="mt-6">
+          <button
+            onClick={() => setShowDismissed((v) => !v)}
+            className="flex items-center gap-2 text-[12px] text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <span>{showDismissed ? '▾' : '▸'}</span>
+            {dismissed.length} dismissed trend{dismissed.length > 1 ? 's' : ''}
+          </button>
+
+          {showDismissed && (
+            <div className="mt-2 space-y-1.5">
+              {dismissed.map((t) => (
+                <div key={t.id} className="flex items-center justify-between rounded-lg border border-border/40 bg-secondary/10 px-3 py-2">
+                  <div>
+                    <p className="text-[12px] text-muted-foreground line-through">{t.title}</p>
+                    <p className="text-[10px] text-muted-foreground/50">{t.affectedCount} companies · {t.category}</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      startTransition(async () => {
+                        await restoreTrend(t.id)
+                        setDismissed((prev) => prev.filter((d) => d.id !== t.id))
+                      })
+                    }}
+                    className="text-[11px] text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded hover:bg-accent"
+                  >
+                    Restore
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

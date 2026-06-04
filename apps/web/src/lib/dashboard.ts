@@ -1,5 +1,22 @@
 import { db } from '@fundos/database'
 import { currentPeriod, previousPeriod } from '@fundos/shared'
+import { withCache } from './cache'
+import { z } from 'zod'
+
+const AlertDigestSchema = z.object({
+  weekOf: z.string(),
+  totalAlerts: z.number(),
+  overallSummary: z.string(),
+  groups: z.array(z.object({
+    category: z.string(),
+    severity: z.enum(['critical', 'high', 'medium']),
+    count: z.number(),
+    companies: z.array(z.string()),
+    narrative: z.string(),
+    coordinatedAction: z.string(),
+  })),
+  generatedAt: z.string(),
+})
 
 function periodMonthsAgo(n: number): string {
   let p = currentPeriod()
@@ -10,23 +27,26 @@ function periodMonthsAgo(n: number): string {
 // ── Health counts ────────────────────────────────────────────
 
 export async function getHealthCounts() {
-  const rows = await db.company.groupBy({
-    by: ['healthStatus'],
-    where: { status: 'ACTIVE' },
-    _count: { id: true },
+  return withCache('health_counts', 300, async () => {
+    const rows = await db.company.groupBy({
+      by: ['healthStatus'],
+      where: { status: 'ACTIVE' },
+      _count: { id: true },
+    })
+    const map: Record<string, number> = {}
+    for (const r of rows) map[r.healthStatus] = r._count.id
+    return {
+      HEALTHY: map['HEALTHY'] ?? 0,
+      WATCHLIST: map['WATCHLIST'] ?? 0,
+      AT_RISK: map['AT_RISK'] ?? 0,
+    }
   })
-  const map: Record<string, number> = {}
-  for (const r of rows) map[r.healthStatus] = r._count.id
-  return {
-    HEALTHY: map['HEALTHY'] ?? 0,
-    WATCHLIST: map['WATCHLIST'] ?? 0,
-    AT_RISK: map['AT_RISK'] ?? 0,
-  }
 }
 
 // ── Fund-level aggregates ────────────────────────────────────
 
 export async function getFundMetrics() {
+  return withCache('fund_metrics', 300, async () => {
   const period = currentPeriod()
   const prevPeriod = periodMonthsAgo(3)
 
@@ -63,6 +83,7 @@ export async function getFundMetrics() {
     mrrDelta: prevMrr > 0 ? (totalMrr - prevMrr) / prevMrr : null,
     burnDelta: prevBurn > 0 ? (totalBurn - prevBurn) / prevBurn : null,
   }
+  })
 }
 
 // ── Companies needing attention ──────────────────────────────
@@ -196,4 +217,53 @@ export async function getSidebarBadges() {
     db.trendFinding.count({ where: { status: 'ACTIVE' } }),
   ])
   return { updates, trends }
+}
+
+// ── Weekly alert digest ──────────────────────────────────────
+// Returns the most recent AI-generated digest from AuditLog,
+// or falls back to a fresh grouping of recent high-severity risks.
+
+export async function getLatestAlertDigest() {
+  const stored = await db.auditLog.findFirst({
+    where: { action: 'WEEKLY_ALERT_DIGEST' },
+    orderBy: { createdAt: 'desc' },
+    select: { metadata: true, createdAt: true },
+  })
+
+  if (stored?.metadata) {
+    const parsed = AlertDigestSchema.safeParse(stored.metadata)
+    if (parsed.success) return parsed.data
+    console.warn('[getLatestAlertDigest] stored metadata failed validation — ignoring', stored.metadata)
+  }
+
+  return null
+}
+
+export async function getWeeklyAlertsForDigest() {
+  const since = new Date()
+  since.setDate(since.getDate() - 7)
+
+  const risks = await db.risk.findMany({
+    where: {
+      severity: { in: ['HIGH', 'CRITICAL'] },
+      status: 'OPEN',
+      createdAt: { gte: since },
+    },
+    orderBy: [{ severity: 'desc' }, { createdAt: 'desc' }],
+    select: {
+      title: true,
+      severity: true,
+      category: true,
+      createdAt: true,
+      company: { select: { name: true } },
+    },
+  })
+
+  return risks.map((r) => ({
+    title: r.title,
+    severity: r.severity,
+    category: r.category,
+    createdAt: r.createdAt,
+    companyName: r.company.name,
+  }))
 }

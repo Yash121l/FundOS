@@ -5,5 +5,6 @@
 //   Phase 7: run-trend-analysis
 //   Phase 8: generate-lp-report
 //   Phase 9: ingest-market-signals
+//   Phase 11: summarise-alerts (Monday 7am UTC)
 
 export {}

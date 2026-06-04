@@ -442,8 +442,11 @@ export interface PortfolioAnalystInput {
   previousUpdates: FounderUpdate[]
 }
 
+export type FounderTone = 'confident' | 'cautious' | 'distressed' | 'uncertain'
+
 export interface PortfolioAnalystOutput {
   healthSummary: string
+  founderTone?: FounderTone  // present when OpenAI key is configured
   risks: Array<Omit<Risk, 'id' | 'companyId' | 'updateId' | 'resolvedAt' | 'createdAt' | 'updatedAt'>>
   opportunities: Array<Omit<Opportunity, 'id' | 'companyId' | 'updateId' | 'createdAt' | 'updatedAt'>>
   suggestedActions: Array<Omit<Action, 'id' | 'companyId' | 'updateId' | 'assigneeId' | 'dueDate' | 'completedAt' | 'createdAt' | 'updatedAt'>>
@@ -478,6 +481,8 @@ export interface TrendDetectionOutput {
     summary: string
     category: TrendCategory
     severity: Severity
+    confidenceScore?: number       // 0–1, present when OpenAI key is configured
+    recommendedAction?: string     // present when OpenAI key is configured
     evidence: Array<{
       companyId: string
       quote: string

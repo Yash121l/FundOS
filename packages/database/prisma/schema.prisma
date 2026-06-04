@@ -256,6 +256,7 @@ model FounderUpdate {
   hiringNeeds       String?
   additionalNotes   String?
   aiSummary         String?
+  founderTone       String?   // 'confident' | 'cautious' | 'distressed' | 'uncertain'
   aiProcessedAt     DateTime?
   reviewedAt        DateTime?
   reviewedById      String?

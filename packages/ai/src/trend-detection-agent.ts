@@ -1,4 +1,5 @@
 import type { TrendDetectionInput, TrendDetectionOutput, TrendCategory, Severity } from '@fundos/types'
+import { getOpenAIClient, MODEL_FAST } from './client'
 
 type Finding = TrendDetectionOutput['findings'][number]
 type Evidence = Finding['evidence'][number]
@@ -58,7 +59,77 @@ export class TrendDetectionAgent {
     const growthFinding = this.detectGrowthPattern(updates)
     if (growthFinding) findings.push(growthFinding)
 
+    // Enhance with AI narratives if OpenAI is available
+    const client = getOpenAIClient()
+    if (client && findings.length > 0) {
+      return { findings: await this.enhanceWithAI(findings, client) }
+    }
+
     return { findings }
+  }
+
+  private async enhanceWithAI(
+    findings: Finding[],
+    client: ReturnType<typeof getOpenAIClient> & {}
+  ): Promise<Finding[]> {
+    return Promise.all(
+      findings.map(async (finding) => {
+        const evidenceText = finding.evidence
+          .slice(0, 5)
+          .map((e) => `- ${e.quote}`)
+          .join('\n')
+
+        try {
+          const response = await client.chat.completions.create({
+            model: MODEL_FAST,
+            response_format: { type: 'json_object' },
+            messages: [
+              {
+                role: 'system',
+                content: 'You are a VC portfolio analyst. Respond only with valid JSON.',
+              },
+              {
+                role: 'user',
+                content: `A portfolio trend has been detected across ${finding.evidence.length} companies.
+
+Trend: ${finding.title}
+Category: ${finding.category}
+Severity: ${finding.severity}
+
+Evidence quotes:
+${evidenceText}
+
+Write:
+{
+  "summary": "3 sentences for a VC partner. Be specific about the pattern and its implication.",
+  "recommendedAction": "One concrete action the fund team should take (1 sentence).",
+  "confidenceScore": 0.0-1.0
+}`,
+              },
+            ],
+            temperature: 0.3,
+            max_tokens: 300,
+          })
+
+          const raw = JSON.parse(response.choices[0]?.message?.content ?? '{}') as {
+            summary?: string
+            recommendedAction?: string
+            confidenceScore?: number
+          }
+
+          return {
+            ...finding,
+            summary: raw.summary ?? finding.summary,
+            recommendedAction: raw.recommendedAction,
+            confidenceScore: typeof raw.confidenceScore === 'number'
+              ? Math.min(1, Math.max(0, raw.confidenceScore))
+              : undefined,
+          }
+        } catch {
+          return finding
+        }
+      })
+    )
   }
 
   private detectBurnRisk(updates: TrendDetectionInput['updates']): Finding | null {

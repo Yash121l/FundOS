@@ -82,6 +82,7 @@ export function UpdateCard({ update, isActive, onClick, onMarkReviewed }: Update
         {update.detectedRisks.map((risk, i) => (
           <RiskTag key={i} severity={risk.severity} label={risk.title} />
         ))}
+        {update.founderTone && <ToneBadge tone={update.founderTone} />}
         {update.fundraisingStatus !== 'NOT_RAISING' && (
           <span className="inline-flex items-center rounded-full bg-violet-500/10 border border-violet-500/20 px-2 py-0.5 text-[10px] font-medium text-violet-400">
             Fundraising
@@ -102,6 +103,21 @@ export function UpdateCard({ update, isActive, onClick, onMarkReviewed }: Update
         )}
       </div>
     </div>
+  )
+}
+
+const TONE_STYLES: Record<string, string> = {
+  confident: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
+  cautious: 'bg-amber-500/10 border-amber-500/20 text-amber-400',
+  distressed: 'bg-red-500/10 border-red-500/20 text-red-400',
+  uncertain: 'bg-slate-500/10 border-slate-500/20 text-slate-400',
+}
+
+function ToneBadge({ tone }: { tone: string }) {
+  return (
+    <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium', TONE_STYLES[tone] ?? TONE_STYLES.uncertain)}>
+      {tone}
+    </span>
   )
 }
 

@@ -66,6 +66,7 @@ export async function generateReport(
     const fundMetrics = aggregateFundMetrics(companies)
 
     // 5. Run LPReportingAgent
+    const model = process.env.OPENAI_API_KEY ? 'gpt-4o' : 'rule-based-v1'
     const agent = new LPReportingAgent()
     const result = await agent.generate({ quarter, companies, recentUpdates, fundMetrics, tone })
 

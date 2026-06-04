@@ -1,4 +1,5 @@
 import type { Company, MarketSignal } from '@fundos/types'
+import { getOpenAIClient, MODEL_FAST } from './client'
 
 export interface MarketIntelligenceInput {
   signal: MarketSignal
@@ -26,6 +27,88 @@ const REGULATION_SECTORS = new Set(['FINTECH', 'HEALTHTECH', 'AI'])
 
 export class MarketIntelligenceAgent {
   async enrich(input: MarketIntelligenceInput): Promise<MarketIntelligenceOutput> {
+    const client = getOpenAIClient()
+    if (client) return this.enrichWithAI(input, client)
+    return this.enrichRuleBased(input)
+  }
+
+  private async enrichWithAI(
+    input: MarketIntelligenceInput,
+    client: ReturnType<typeof getOpenAIClient> & {}
+  ): Promise<MarketIntelligenceOutput> {
+    const { signal, portfolio } = input
+    const activeCompanies = portfolio.filter((c) => c.status === 'ACTIVE')
+
+    if (activeCompanies.length === 0) {
+      return { relevantCompanyIds: [], relevanceExplanation: 'No active portfolio companies.', perCompanyReasons: {} }
+    }
+
+    const companyList = activeCompanies
+      .map((c) => `- ${c.name} (${c.sector}${c.description ? `: ${c.description.slice(0, 80)}` : ''})`)
+      .join('\n')
+
+    try {
+      const response = await client.chat.completions.create({
+        model: MODEL_FAST,
+        response_format: { type: 'json_object' },
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a VC analyst assessing market signal relevance for a portfolio. Respond only with valid JSON.',
+          },
+          {
+            role: 'user',
+            content: `Assess which portfolio companies are meaningfully affected by this market signal.
+
+SIGNAL: ${signal.title}
+CATEGORY: ${signal.category}
+SUMMARY: ${signal.summary}
+
+PORTFOLIO COMPANIES:
+${companyList}
+
+For each relevant company, explain why in one sentence. Only include companies with genuine relevance — not superficial sector overlap.
+
+Respond with:
+{
+  "relevantCompanies": [
+    { "name": "CompanyName", "reason": "Why this signal matters for them." }
+  ]
+}`,
+          },
+        ],
+        temperature: 0.2,
+        max_tokens: 600,
+      })
+
+      const raw = JSON.parse(response.choices[0]?.message?.content ?? '{}') as {
+        relevantCompanies?: Array<{ name: string; reason: string }>
+      }
+
+      const relevantIds: string[] = []
+      const perCompanyReasons: Record<string, string> = {}
+
+      for (const item of raw.relevantCompanies ?? []) {
+        const company = activeCompanies.find(
+          (c) => c.name.toLowerCase() === item.name.toLowerCase()
+        )
+        if (company) {
+          relevantIds.push(company.id)
+          perCompanyReasons[company.id] = item.reason
+        }
+      }
+
+      const explanation = relevantIds.length > 0
+        ? `Signal relevant to ${relevantIds.length} portfolio compan${relevantIds.length === 1 ? 'y' : 'ies'}.`
+        : `No direct portfolio relevance detected for this signal.`
+
+      return { relevantCompanyIds: relevantIds, relevanceExplanation: explanation, perCompanyReasons }
+    } catch {
+      return this.enrichRuleBased(input)
+    }
+  }
+
+  private async enrichRuleBased(input: MarketIntelligenceInput): Promise<MarketIntelligenceOutput> {
     const { signal, portfolio } = input
     const text = `${signal.title} ${signal.summary}`.toLowerCase()
 

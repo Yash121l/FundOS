@@ -413,19 +413,19 @@ TRIGGER_SECRET_KEY=...
 
 ---
 
-## Phase 10 — Claude API Integration (Real AI)
+## Phase 10 — OpenAI API Integration (Real AI)
 
-**Goal:** Replace all rule-based agent stubs with live Claude claude-sonnet-4-6 calls. Every analysis the platform produces — update summaries, risk extraction, trend narratives, LP prose — becomes genuinely AI-generated rather than templated.
+**Goal:** Replace all rule-based agent stubs with live GPT-4o/GPT-4o-mini calls. Every analysis the platform produces — update summaries, risk extraction, trend narratives, LP prose — becomes genuinely AI-generated rather than templated.
 
-**Prerequisite:** `ANTHROPIC_API_KEY` in `.env.local`. Install `@anthropic-ai/sdk` in `packages/ai`.
+**Prerequisite:** `OPENAI_API_KEY` in `.env.local`. Install `@openai/openai-node` in `packages/ai`.
 
-**Why Claude over OpenAI here:** Claude's 200K context window fits an entire quarter of portfolio updates in one call. Claude's instruction-following and structured JSON output is excellent for the schema-bound outputs this platform needs (risks array, opportunities array, health summary). Prompt caching on the Anthropic API makes repeated portfolio-wide calls cost-efficient.
+**Why Claude over OpenAI here:** OpenAI's 200K context window fits an entire quarter of portfolio updates in one call. OpenAI's instruction-following and structured JSON output is excellent for the schema-bound outputs this platform needs (risks array, opportunities array, health summary). Prompt caching on the Anthropic API makes repeated portfolio-wide calls cost-efficient.
 
 ### 10.1 — SDK & Shared Client
 
-- [ ] Add `@anthropic-ai/sdk` to `packages/ai/package.json`
+- [ ] Add `@openai/openai-node` to `packages/ai/package.json`
 - [ ] Create `packages/ai/src/client.ts` — singleton Anthropic client with prompt caching headers
-- [ ] Env guard: if `ANTHROPIC_API_KEY` is absent, fall back to the existing rule-based implementation (zero-downtime swap)
+- [ ] Env guard: if `OPENAI_API_KEY` is absent, fall back to the existing rule-based implementation (zero-downtime swap)
 - [ ] Extend `writeAIAuditLog` to record actual token counts returned from API responses
 
 ### 10.2 — PortfolioAnalyst: Tone Detection & Semantic Risk Extraction
@@ -455,7 +455,7 @@ Replace the regex/threshold-based risk detection with Claude inference.
 ```
 
 **Implementation approach:**
-- Send a single structured prompt requesting JSON output via Claude's tool_use / response format
+- Send a single structured prompt requesting JSON output via OpenAI's tool_use / response format
 - Use a system prompt that describes the VC analyst persona and desired output format
 - Include prompt cache breakpoint on the system prompt so repeated calls within the same batch reuse the cached system context
 - Parse the JSON response back into `PortfolioAnalystOutput`
@@ -498,7 +498,7 @@ Replace keyword-sector matching with Claude:
 **Implementation approach:**
 - Batch all portfolio companies into one Claude call per signal
 - System prompt describes the portfolio company, the signal, and asks for structured JSON with `relevantCompanyIds`, `impactType`, and per-company impact text
-- Use Claude's extended context to fit all 30 company descriptions in a single call without pagination
+- Use OpenAI's extended context to fit all 30 company descriptions in a single call without pagination
 
 ### 10.6 — UI: Tone Badge on UpdateCard
 
@@ -526,7 +526,7 @@ Add a `/ask` panel (or ⌘K extension) where a partner can type questions like:
 **Implementation approach:**
 - Server action accepts a natural language `question` and passes it to a new `PortfolioQAAgent`
 - `PortfolioQAAgent` fetches the relevant context (determined by the question type), constructs a grounded prompt, and calls Claude
-- Response is streamed back to the client using the Vercel AI SDK's `streamText` or the Anthropic SDK's streaming API
+- Response is streamed back to the client using the Vercel AI SDK's `streamText` or the OpenAI SDK's streaming API
 - Sources are cited inline (company name + metric + period) so the answer is auditable
 
 **Technical components:**
@@ -599,5 +599,5 @@ DATABASE_URL=postgresql://...
 TRIGGER_SECRET_KEY=...
 
 # Phase 10+ — real AI (falls back to rule-based if absent)
-ANTHROPIC_API_KEY=sk-ant-...  # from https://console.anthropic.com
+OPENAI_API_KEY=sk-proj-...  # from https://platform.openai.com/api-keys
 ```

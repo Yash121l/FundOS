@@ -190,12 +190,11 @@ describe('PortfolioAnalyst — rule-based fallback (no API key)', () => {
     const result = await agent.analyze(makeInput({
       metricsHistory: [makeMetric({ runway: 4, revenueGrowthMom: -0.1 })],
     }))
-    for (const action of result.suggestedActions) {
-      const sourceRisk = result.risks.find((r) =>
-        r.severity === 'CRITICAL' || r.severity === 'HIGH'
-      )
-      expect(sourceRisk).toBeDefined()
-    }
+    expect(result.suggestedActions.length).toBeGreaterThan(0)
+    const criticalOrHighRisks = result.risks.filter(
+      (r) => r.severity === 'CRITICAL' || r.severity === 'HIGH'
+    )
+    expect(criticalOrHighRisks.length).toBeGreaterThan(0)
   })
 
   it('returns a non-empty healthSummary mentioning the company name', async () => {

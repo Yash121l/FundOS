@@ -459,6 +459,7 @@ export interface LPReportInput {
   recentUpdates: FounderUpdate[]
   fundMetrics: FundAggregates
   tone?: 'STANDARD' | 'CONSERVATIVE' | 'GROWTH_FOCUSED'
+  lpProfile?: LPProfile
 }
 
 export interface LPReportSectionOutput {
@@ -503,4 +504,136 @@ export interface AIAuditEntry {
   input: unknown
   output: unknown
   createdAt: Date
+}
+
+// ==================
+// PHASE 11 — CONVERSATIONAL INTELLIGENCE
+// ==================
+
+export interface AskContext {
+  companies: Array<{
+    id: string
+    name: string
+    slug: string
+    sector: string
+    stage: string
+    healthStatus: string
+    healthScore: number
+    description: string | null
+    latestMetrics: {
+      mrr: number | null
+      revenueGrowthMom: number | null
+      burnRate: number | null
+      runway: number | null
+      headcount: number | null
+    } | null
+  }>
+  fundMetrics: {
+    totalMrr: number
+    totalArr: number
+    totalBurn: number
+    avgGrowth: number
+    avgRunway: number
+    totalHeadcount: number
+  }
+  recentUpdates: Array<{
+    companyName: string
+    period: string
+    wins: string
+    risks: string
+    mrr: number | null
+    runway: number | null
+    fundraisingStatus: string
+  }>
+  activeTrends: Array<{
+    title: string
+    summary: string
+    category: string
+    severity: string
+    affectedCount: number
+  }>
+  activeRisks: Array<{
+    title: string
+    severity: string
+    category: string
+    companyName: string
+  }>
+  asOf: string
+}
+
+export interface MeetingBriefInput {
+  company: {
+    id: string
+    name: string
+    sector: string
+    stage: string
+    healthStatus: string
+    healthScore: number
+    description: string | null
+  }
+  metricsHistory: Array<{
+    period: string
+    mrr: number | null
+    revenueGrowthMom: number | null
+    burnRate: number | null
+    runway: number | null
+    headcount: number | null
+    healthScore: number | null
+  }>
+  recentUpdates: Array<{
+    period: string
+    wins: string
+    risks: string
+    mrr: number | null
+    runway: number | null
+    fundraisingStatus: string
+    aiSummary: string | null
+    founderTone: string | null
+  }>
+  openRisks: Array<{ title: string; severity: string; category: string; status: string }>
+  pendingActions: Array<{ title: string; priority: string; status: string }>
+}
+
+export interface MeetingBrief {
+  companyName: string
+  generatedAt: Date
+  healthTrajectory: string
+  openRisksSection: string
+  pendingActionsSection: string
+  discussionTopics: string[]
+  questionsToAsk: string[]
+}
+
+export interface LPProfile {
+  name: string
+  priorities: string[]
+  focusSectors: string[]
+}
+
+export interface AlertDigestInput {
+  risks: Array<{
+    title: string
+    severity: string
+    category: string
+    companyName: string
+    createdAt: Date
+  }>
+  weekOf: string
+}
+
+export interface AlertDigestGroup {
+  category: string
+  severity: 'critical' | 'high' | 'medium'
+  count: number
+  companies: string[]
+  narrative: string
+  coordinatedAction: string
+}
+
+export interface AlertDigest {
+  weekOf: string
+  totalAlerts: number
+  groups: AlertDigestGroup[]
+  overallSummary: string
+  generatedAt: Date
 }

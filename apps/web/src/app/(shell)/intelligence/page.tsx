@@ -18,7 +18,7 @@ export default async function IntelligencePage({ searchParams }: Props) {
   ])
 
   return (
-    <div className="p-5 max-w-3xl">
+    <div className="p-5 max-w-[1440px] w-full">
       {/* Header */}
       <div className="flex items-start justify-between mb-5">
         <div>

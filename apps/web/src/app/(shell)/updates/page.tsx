@@ -8,7 +8,7 @@ export default async function UpdatesPage() {
   const updates = await getUpdatesForInbox().catch(() => [])
 
   return (
-    <div className="p-5 max-w-3xl">
+    <div className="p-5 max-w-[1440px] w-full">
       {/* Page header */}
       <div className="flex items-center justify-between mb-5">
         <div>

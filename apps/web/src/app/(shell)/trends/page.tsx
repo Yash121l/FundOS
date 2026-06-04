@@ -19,7 +19,7 @@ export default async function TrendsPage({ searchParams }: Props) {
   ])
 
   return (
-    <div className="p-5 max-w-3xl">
+    <div className="p-5 max-w-[1440px] w-full">
       <div className="flex items-start justify-between mb-5">
         <div>
           <h1 className="text-[15px] font-semibold text-foreground">Trend Detection</h1>

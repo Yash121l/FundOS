@@ -93,7 +93,6 @@ export function CompanyHeader({ company: c, latest, prev }: Props) {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-[12px] text-muted-foreground hover:text-primary transition-colors"
-                    onClick={(e) => e.stopPropagation()}
                   >
                     {c.website.replace(/^https?:\/\//, '')}
                     <ExternalLink size={10} />

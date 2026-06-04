@@ -15,7 +15,7 @@ export default async function LPReportsPage() {
   const reports = await getLPReports().catch(() => [])
 
   return (
-    <div className="p-5 max-w-4xl">
+    <div className="p-5 max-w-[1440px] w-full">
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-[15px] font-semibold text-foreground">LP Reports</h1>

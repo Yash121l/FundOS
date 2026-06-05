@@ -1,0 +1,103 @@
+services:
+  # ── Infrastructure ──────────────────────────────────────────────────────────
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: signalos
+      POSTGRES_PASSWORD: signalos
+      POSTGRES_DB: signalos
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U signalos -d signalos"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── One-shot: run migrations + seed, then exit ──────────────────────────────
+
+  migrate:
+    build:
+      context: .
+      target: dev
+    env_file: .env.docker
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "
+        pnpm --filter @fundos/database generate &&
+        pnpm db:migrate &&
+        pnpm db:seed
+      "
+    restart: no
+
+  # ── Application services ────────────────────────────────────────────────────
+
+  web:
+    build:
+      context: .
+      target: dev
+    env_file: .env.docker
+    environment:
+      NODE_ENV: development
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount source for hot-reload. The named volume shields node_modules so
+      # the host's (potentially absent) node_modules don't overwrite the
+      # container's installed ones.
+      - .:/app
+      - node_modules:/app/node_modules
+      - next_cache:/app/apps/web/.next
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    command: pnpm --filter @fundos/web dev
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      target: dev
+    env_file: .env.docker
+    environment:
+      NODE_ENV: development
+      PORT: "3001"
+    ports:
+      - "3001:3001"
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    command: pnpm --filter @fundos/api dev
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  node_modules:
+  next_cache:

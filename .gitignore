@@ -18,6 +18,7 @@ packages/database/node_modules/.prisma
 .env
 .env.local
 .env.*.local
+.env.docker
 
 # turbo
 .turbo

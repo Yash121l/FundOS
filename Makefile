@@ -1,22 +1,34 @@
-# SignalOS — Docker helper targets
-# Detects whether `docker compose` (plugin) or `docker-compose` (standalone) is available.
-# Usage: make up       (first run — builds images, migrates DB, seeds, starts everything)
-#        make down     (stop containers, preserve volumes)
-#        make reset    (wipe all volumes and start fresh — run after schema changes)
-#        make logs     (tail all service logs)
-#        make seed     (re-run seed against running db container)
-#        make studio   (print Prisma Studio command)
+# SignalOS — Makefile
+#
+# make up      → full Docker stack (build images, migrate, seed, start — first run)
+# make down    → stop containers, preserve volumes
+# make reset   → wipe volumes and start fresh
+# make logs    → tail all service logs
+# make seed    → re-run seed against running DB
+# make studio  → print Prisma Studio command
+# make dev     → local native dev (infra in Docker, apps on host)
+# make infra-up / infra-down → manage only db+redis containers
 
 .PHONY: up down logs reset migrate seed studio dev infra-up infra-down
 
 # Prefer `docker compose` plugin; fall back to `docker-compose` standalone
 COMPOSE := $(shell docker compose version >/dev/null 2>&1 && echo "docker compose" || echo "docker-compose")
 
-# Postgres credentials used by docker-compose.yml, exposed on host port 5433
+# Postgres credentials — docker-compose.yml exposes port 5433 on the host
 LOCAL_DB_URL := postgresql://signalos:signalos@localhost:5433/signalos
 
+# ── Docker (make up) ──────────────────────────────────────────────────────────
+
 up:
-	@if [ ! -f .env.docker ]; then cp .env.example .env.docker; echo "Created .env.docker from .env.example — add optional API keys there."; fi
+	@if [ ! -f .env.docker ]; then \
+		cp .env.example .env.docker; \
+		sed -i '' \
+			-e 's|DATABASE_URL=postgresql://signalos:signalos@localhost:5433|DATABASE_URL=postgresql://signalos:signalos@db:5432|' \
+			-e 's|DIRECT_URL=postgresql://signalos:signalos@localhost:5433|DIRECT_URL=postgresql://signalos:signalos@db:5432|' \
+			-e 's|REDIS_URL=redis://localhost:6380|REDIS_URL=redis://redis:6379|' \
+			.env.docker; \
+		echo "Created .env.docker from .env.example (Docker URLs applied)"; \
+	fi
 	$(COMPOSE) up --build
 
 down:
@@ -26,13 +38,13 @@ logs:
 	$(COMPOSE) logs -f
 
 migrate:
-	$(COMPOSE) run --rm migrate sh -c "pnpm db:migrate"
+	$(COMPOSE) run --rm migrate sh -c "pnpm --filter @fundos/database migrate:deploy"
 
 seed:
 	$(COMPOSE) run --rm migrate sh -c "pnpm db:seed"
 
 studio:
-	@echo "Run: DATABASE_URL=postgresql://signalos:signalos@localhost:5433/signalos pnpm db:studio"
+	@echo "Run: DATABASE_URL=$(LOCAL_DB_URL) pnpm db:studio"
 
 reset:
 	$(COMPOSE) down -v
@@ -41,16 +53,26 @@ reset:
 # ── Local native dev (infra in Docker, apps on host) ─────────────────────────
 
 dev:
+	@printf '\n'
+	@printf '  ╔══════════════════════════════════════════════════════╗\n'
+	@printf '  ║          SignalOS — Local Development Mode           ║\n'
+	@printf '  ║                                                      ║\n'
+	@printf '  ║  Web  →  http://localhost:3000                       ║\n'
+	@printf '  ║  API  →  http://localhost:3001                       ║\n'
+	@printf '  ║                                                      ║\n'
+	@printf '  ║  Login:  admin@signalos.vc / Password123!            ║\n'
+	@printf '  ╚══════════════════════════════════════════════════════╝\n'
+	@printf '\n'
 	@set -e; \
-	if [ ! -f .env.local ]; then cp .env.example .env.local; echo "Created .env.local from .env.example"; fi; \
+	if [ ! -f .env.local ]; then cp .env.example .env.local; echo "  Created .env.local from .env.example"; fi; \
 	$(COMPOSE) up db redis -d && \
-	echo "Waiting for Postgres to be ready…" && \
+	echo "  Waiting for Postgres…" && \
 	_timeout=30; _elapsed=0; \
 	until $(COMPOSE) exec -T db pg_isready -U signalos -d signalos >/dev/null 2>&1; do \
 	  sleep 1; _elapsed=$$((_elapsed+1)); \
-	  if [ $$_elapsed -ge $$_timeout ]; then echo "ERROR: Postgres did not become ready in $$_timeout seconds" >&2; exit 1; fi; \
+	  if [ $$_elapsed -ge $$_timeout ]; then echo "ERROR: Postgres not ready after $$_timeout s" >&2; exit 1; fi; \
 	done && \
-	echo "Postgres ready." && \
+	echo "  Postgres ready." && \
 	pnpm install && \
 	pnpm db:generate && \
 	DATABASE_URL=$(LOCAL_DB_URL) DIRECT_URL=$(LOCAL_DB_URL) pnpm --filter @fundos/database migrate:deploy && \

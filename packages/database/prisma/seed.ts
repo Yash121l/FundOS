@@ -1,6 +1,48 @@
 import { PrismaClient } from '@prisma/client'
+import fs from 'fs'
+import path from 'path'
+
+// Load environment variables from .env.local and .env files
+function loadEnv() {
+  const rootDir = path.resolve(__dirname, '../../..')
+  const pkgDir = path.resolve(__dirname, '..')
+  
+  const files = [
+    path.join(rootDir, '.env'),
+    path.join(rootDir, '.env.local'),
+    path.join(pkgDir, '.env'),
+    path.join(pkgDir, '.env.local'),
+  ]
+
+  for (const file of files) {
+    try {
+      if (fs.existsSync(file)) {
+        const content = fs.readFileSync(file, 'utf-8')
+        for (const line of content.split(/\r?\n/)) {
+          const trimmed = line.trim()
+          if (!trimmed || trimmed.startsWith('#')) continue
+          const idx = trimmed.indexOf('=')
+          if (idx > 0) {
+            const key = trimmed.substring(0, idx).trim()
+            let val = trimmed.substring(idx + 1).trim()
+            if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+              val = val.substring(1, val.length - 1)
+            }
+            if (key && !process.env[key]) {
+              process.env[key] = val
+            }
+          }
+        }
+      }
+    } catch (e) {
+      // Ignore
+    }
+  }
+}
+loadEnv()
 
 const db = new PrismaClient()
+
 
 // ============================================================
 // HELPERS
@@ -730,6 +772,7 @@ async function main() {
   const bcrypt = await import('bcryptjs')
   const seedPassword = process.env.SEED_PASSWORD ?? Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
   const pw = await bcrypt.default.hash(seedPassword, 12)
+  console.log(`\n  Seed password: ${seedPassword}\n`)
 
   const seedUsers: Array<{ email: string; name: string; role: string }> = [
     { email: 'admin@signalos.vc',   name: 'Fund Admin',        role: 'ANALYST' },
@@ -743,7 +786,7 @@ async function main() {
   for (const u of seedUsers) {
     await db.user.upsert({
       where: { email: u.email },
-      update: {},
+      update: { passwordHash: pw },
       create: {
         email: u.email,
         name: u.name,
@@ -752,7 +795,7 @@ async function main() {
         emailVerified: new Date(),
       },
     })
-    console.log(`  ✓ ${u.role.padEnd(14)} ${u.email} / <password hidden>`)
+    console.log(`  ✓ ${u.role.padEnd(14)} ${u.email}`)
   }
 
   const companyMap: Record<string, string> = {} // slug → id
@@ -827,7 +870,7 @@ async function main() {
   // ── Founder user — linked to Socure ─────────────────────────
   await db.user.upsert({
     where: { email: 'founder@signalos.vc' },
-    update: {},
+    update: { passwordHash: pw },
     create: {
       email: 'founder@signalos.vc',
       name: 'Johnny Ayers',

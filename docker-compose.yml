@@ -42,13 +42,14 @@ services:
       DATABASE_URL: postgresql://signalos:signalos@db:5432/signalos
       DIRECT_URL: postgresql://signalos:signalos@db:5432/signalos
       REDIS_URL: redis://redis:6379
+      SEED_PASSWORD: ${SEED_PASSWORD:-Password123!}
     depends_on:
       db:
         condition: service_healthy
     command: >
       sh -c "
         pnpm --filter @fundos/database generate &&
-        pnpm db:migrate &&
+        pnpm --filter @fundos/database migrate:deploy &&
         pnpm db:seed
       "
     restart: no

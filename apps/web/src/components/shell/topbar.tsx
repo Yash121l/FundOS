@@ -8,7 +8,7 @@ import { useCommandPalette } from '@/components/providers/command-palette-provid
 import { useMobileSidebar } from './mobile-sidebar-context'
 import { signOut } from '@/lib/auth-actions'
 import type { SessionUser } from '@/lib/session'
-import { cn } from '@/lib/utils'
+
 
 const TITLES: Record<string, string> = {
   '/': 'Dashboard',

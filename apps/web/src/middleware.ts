@@ -1,57 +1,47 @@
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 
-const isPublicRoute = createRouteMatcher([
-  '/sign-in(.*)',
-  '/sign-up(.*)',
-  '/api/health',
-  // Webhooks are public — they use their own HMAC-based auth.
-  '/api/webhooks(.*)',
-])
+const SESSION_COOKIE = 'signalos_session'
+const PUBLIC_PATHS = ['/sign-in', '/sign-up', '/api/health', '/api/webhooks']
 
-const isFounderRoute = createRouteMatcher(['/founder(.*)'])
-const isInternalRoute = createRouteMatcher([
-  '/',
-  '/portfolio(.*)',
-  '/updates(.*)',
-  '/trends(.*)',
-  '/intelligence(.*)',
-  '/ask(.*)',
-])
+function isPublic(pathname: string) {
+  return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))
+}
 
-export default clerkMiddleware(async (auth, req) => {
-  if (isPublicRoute(req)) return NextResponse.next()
+export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set('x-signalos-pathname', pathname)
 
-  await auth.protect()
-
-  // Role comes from Clerk sessionClaims (publicMetadata), not the DB.
-  // Middleware runs on the edge where Prisma/Postgres is unavailable, so we
-  // rely on Clerk's JWT — setUserRole() keeps publicMetadata in sync with the DB.
-  // If no role is set yet (new user, metadata not written), we fall through
-  // and let the server component enforce access via getCurrentUser().
-  const { sessionClaims } = await auth()
-  const role = (sessionClaims?.publicMetadata as { role?: string } | undefined)?.role
-
-  if (role === 'FOUNDER' && isInternalRoute(req)) {
-    return NextResponse.redirect(new URL('/founder/dashboard', req.url))
+  // Always allow static assets and Next.js internals
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/favicon') ||
+    /\.(?:ico|png|svg|jpg|jpeg|webp|css|js|map|woff2?)$/.test(pathname)
+  ) {
+    return NextResponse.next()
   }
 
-  if (role === 'LP' && (isInternalRoute(req) || isFounderRoute(req))) {
-    return NextResponse.redirect(new URL('/lp-reports', req.url))
+  // Public routes pass through
+  if (isPublic(pathname)) return NextResponse.next()
+
+  // Check for session cookie
+  const token = request.cookies.get(SESSION_COOKIE)?.value
+  if (!token) {
+    const signIn = new URL('/sign-in', request.url)
+    signIn.searchParams.set('from', pathname)
+    return NextResponse.redirect(signIn)
   }
 
-  // Prevent internal users from accidentally landing on the founder portal.
-  if (role && role !== 'FOUNDER' && role !== 'LP' && isFounderRoute(req)) {
-    return NextResponse.redirect(new URL('/', req.url))
-  }
-
-  return NextResponse.next()
-})
+  // Token exists — let the server component validate it against the DB.
+  // Edge middleware cannot query Postgres, so we only do the cookie presence check here.
+  return NextResponse.next({
+    request: { headers: requestHeaders },
+  })
+}
 
 export const config = {
   matcher: [
-    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
-    '/(api|trpc)(.*)',
-    '/__clerk/(.*)',
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 }

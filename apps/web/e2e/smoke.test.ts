@@ -14,7 +14,7 @@ async function checkPage(
   if (url.includes('sign-in') || url.includes('sign-up')) {
     expect(response?.status()).toBe(200)
     // Sign-in page has accessible heading
-    await expect(page.locator('h1, h2, [role="heading"]').first()).toBeVisible()
+    await expect(page.locator('h1:visible, h2:visible, [role="heading"]:visible').first()).toBeVisible()
     // Sign-in form should contain an email field and a submit button
     await expect(page.locator('input[type="email"], input[name="email"]').first()).toBeVisible()
     await expect(page.locator('button[type="submit"], button:has-text("Sign")').first()).toBeVisible()

@@ -35,9 +35,11 @@ app.onError((err, c) => {
 })
 
 const port = parseInt(process.env['PORT'] ?? '3001', 10)
+// Bind to 0.0.0.0 so the server is reachable inside Docker networks and from the host.
+const hostname = process.env['HOST'] ?? '0.0.0.0'
 
-serve({ fetch: app.fetch, port }, () => {
-  console.log(`[API] Running on http://localhost:${port}`)
+serve({ fetch: app.fetch, port, hostname }, () => {
+  console.log(`[API] Running on http://${hostname}:${port}`)
 })
 
 export default app

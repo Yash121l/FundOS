@@ -16,6 +16,8 @@ COPY packages/database/package.json  packages/database/
 COPY packages/shared/package.json    packages/shared/
 COPY packages/types/package.json     packages/types/
 COPY packages/ui/package.json        packages/ui/
+# Prisma postinstall needs schema.prisma to exist before `pnpm install` runs
+COPY packages/database/prisma/schema.prisma packages/database/prisma/
 RUN pnpm install --frozen-lockfile
 
 # ── Stage 3: dev — used by docker-compose.yml ─────────────────────────────────

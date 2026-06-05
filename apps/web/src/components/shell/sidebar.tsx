@@ -13,6 +13,9 @@ import {
   Settings,
   Sparkles,
   X,
+  PieChart,
+  Activity,
+  CalendarDays,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useMobileSidebar } from './mobile-sidebar-context'
@@ -27,6 +30,13 @@ const NAV = [
     ],
   },
   {
+    group: 'MONITORING',
+    items: [
+      { icon: Activity, label: 'PM Monitoring', href: '/monitoring' },
+      { icon: CalendarDays, label: 'Board & IC', href: '/board' },
+    ],
+  },
+  {
     group: 'INTELLIGENCE',
     items: [
       { icon: TrendingUp, label: 'Trends', href: '/trends', badgeKey: 'trends' as const },
@@ -36,7 +46,10 @@ const NAV = [
   },
   {
     group: 'REPORTING',
-    items: [{ icon: FileBarChart, label: 'LP Reports', href: '/lp-reports' }],
+    items: [
+      { icon: FileBarChart, label: 'LP Reports', href: '/lp-reports' },
+      { icon: PieChart, label: 'Fund Performance', href: '/fund' },
+    ],
   },
 ]
 

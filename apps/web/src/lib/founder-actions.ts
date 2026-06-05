@@ -6,6 +6,7 @@ import { PortfolioAnalyst, writeAIAuditLog } from '@fundos/ai'
 import { computeHealthScore, classifyHealth } from '@fundos/analytics'
 import { revalidatePath } from 'next/cache'
 import { requireFounderAccess } from './auth'
+import { submitMOR, type MorFormData } from './monitoring-actions'
 import type { FundraisingStatus, NewsSubmissionType, Company, MetricSnapshot, FounderUpdate, PortfolioAnalystInput } from '@fundos/types'
 
 // ── Submit a monthly founder update ─────────────────────────
@@ -99,6 +100,73 @@ export async function submitFounderMonthlyUpdate(
 
   revalidatePath('/founder/dashboard')
   return { success: true, updateId: update.id }
+}
+
+// ── Founder submits their monthly MOR ───────────────────────
+
+export async function submitFounderMOR(
+  data: Omit<MorFormData, 'companyId'>
+): Promise<{ success: boolean; morId: string }> {
+  const user = await requireFounderAccess()
+  if (!user.companyId) throw new Error('No company linked to your account')
+  return submitMOR({ ...data, companyId: user.companyId })
+}
+
+// ── Submit weekly KPI ping ───────────────────────────────────
+
+export interface WeeklyKpiPingData {
+  week: string  // "YYYY-WXX"
+  kpi1Label?: string; kpi1Value?: number | null
+  kpi2Label?: string; kpi2Value?: number | null
+  kpi3Label?: string; kpi3Value?: number | null
+  kpi4Label?: string; kpi4Value?: number | null
+  kpi5Label?: string; kpi5Value?: number | null
+  founderNote?: string
+}
+
+export async function submitWeeklyKpiPing(
+  data: WeeklyKpiPingData
+): Promise<{ success: boolean; id: string }> {
+  const user = await requireFounderAccess()
+  if (!user.companyId) throw new Error('No company linked to your account')
+
+  const ping = await db.weeklyKpiPing.upsert({
+    where: { companyId_week: { companyId: user.companyId, week: data.week } },
+    create: {
+      companyId: user.companyId,
+      submittedById: user.id,
+      week: data.week,
+      kpi1Label: data.kpi1Label ?? null,
+      kpi1Value: data.kpi1Value ?? null,
+      kpi2Label: data.kpi2Label ?? null,
+      kpi2Value: data.kpi2Value ?? null,
+      kpi3Label: data.kpi3Label ?? null,
+      kpi3Value: data.kpi3Value ?? null,
+      kpi4Label: data.kpi4Label ?? null,
+      kpi4Value: data.kpi4Value ?? null,
+      kpi5Label: data.kpi5Label ?? null,
+      kpi5Value: data.kpi5Value ?? null,
+      founderNote: data.founderNote ?? null,
+    },
+    update: {
+      submittedById: user.id,
+      submittedAt: new Date(),
+      kpi1Label: data.kpi1Label ?? null,
+      kpi1Value: data.kpi1Value ?? null,
+      kpi2Label: data.kpi2Label ?? null,
+      kpi2Value: data.kpi2Value ?? null,
+      kpi3Label: data.kpi3Label ?? null,
+      kpi3Value: data.kpi3Value ?? null,
+      kpi4Label: data.kpi4Label ?? null,
+      kpi4Value: data.kpi4Value ?? null,
+      kpi5Label: data.kpi5Label ?? null,
+      kpi5Value: data.kpi5Value ?? null,
+      founderNote: data.founderNote ?? null,
+    },
+  })
+
+  revalidatePath('/founder/dashboard')
+  return { success: true, id: ping.id }
 }
 
 // ── Submit a news/signal item ────────────────────────────────

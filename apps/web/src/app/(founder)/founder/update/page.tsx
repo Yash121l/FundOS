@@ -1,37 +1,40 @@
+import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
-import { getFounderFiledPeriods, getFounderKPIs } from '@/lib/founder'
-import { FounderUpdateForm } from '@/components/founder/founder-update-form'
+import { getFounderMORStatus } from '@/lib/founder'
+import { FounderMORForm } from '@/components/founder/founder-mor-form'
 
 export const dynamic = 'force-dynamic'
 
-export default async function FounderUpdatePage() {
-  const clerkKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
-  if (!clerkKey) {
-    return (
-      <div className="text-center py-16 text-muted-foreground text-sm">
-        Authentication is not configured.
-      </div>
-    )
-  }
-
-  const user = await getCurrentUser()
-  if (!user || user.role !== 'FOUNDER' || !user.companyId) redirect('/sign-in')
-
-  const [filedPeriods, kpis] = await Promise.all([
-    getFounderFiledPeriods(user.companyId),
-    getFounderKPIs(user.companyId),
-  ])
+async function FounderMORContent({ companyId }: { companyId: string }) {
+  const morStatus = await getFounderMORStatus(companyId)
 
   return (
     <div className="max-w-2xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-xl font-semibold">Submit Monthly Update</h1>
+        <h1 className="text-xl font-semibold">Monthly Operations Report</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Share your metrics and narrative with your investors.
+          Your {morStatus.reportingPeriod} MOR — structured data your investors use for portfolio monitoring and IC reviews.
         </p>
       </div>
-      <FounderUpdateForm filedPeriods={filedPeriods} prevMetrics={kpis.current} />
+      <FounderMORForm
+        reportingPeriod={morStatus.reportingPeriod}
+        dueDate={morStatus.dueDate}
+        daysUntilDue={morStatus.daysUntilDue}
+        isOverdue={morStatus.isOverdue}
+        isSubmitted={morStatus.isSubmitted}
+      />
     </div>
+  )
+}
+
+export default async function FounderUpdatePage() {
+  const user = await getCurrentUser()
+  if (!user || user.role !== 'FOUNDER' || !user.companyId) redirect('/sign-in')
+
+  return (
+    <Suspense fallback={<div className="p-5 text-[12px] text-muted-foreground animate-pulse">Loading report…</div>}>
+      <FounderMORContent companyId={user.companyId} />
+    </Suspense>
   )
 }

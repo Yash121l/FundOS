@@ -50,11 +50,13 @@ export async function getCompanyBySlug(slug: string) {
       sector: true,
       stage: true,
       country: true,
+      status: true,
       healthStatus: true,
       healthScore: true,
       description: true,
       website: true,
       foundedYear: true,
+      logoUrl: true,
       metrics: {
         orderBy: { period: 'desc' },
         take: 13,

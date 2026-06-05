@@ -5,14 +5,7 @@ import { FounderNewsForm } from '@/components/founder/founder-news-form'
 export const dynamic = 'force-dynamic'
 
 export default async function FounderNewsPage() {
-  const clerkKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
-  if (!clerkKey) {
-    return (
-      <div className="text-center py-16 text-muted-foreground text-sm">
-        Authentication is not configured.
-      </div>
-    )
-  }
+  
 
   const user = await getCurrentUser()
   if (!user || user.role !== 'FOUNDER' || !user.companyId) redirect('/sign-in')

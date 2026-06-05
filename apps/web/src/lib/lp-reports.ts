@@ -2,20 +2,30 @@ import { db } from '@fundos/database'
 
 // ── Report list ──────────────────────────────────────────────
 
+const reportListSelect = {
+  id: true,
+  title: true,
+  quarter: true,
+  status: true,
+  version: true,
+  createdAt: true,
+  companies: {
+    select: { companyId: true },
+  },
+} as const
+
 export async function getLPReports() {
   return db.lPReport.findMany({
     orderBy: { createdAt: 'desc' },
-    select: {
-      id: true,
-      title: true,
-      quarter: true,
-      status: true,
-      version: true,
-      createdAt: true,
-      companies: {
-        select: { companyId: true },
-      },
-    },
+    select: reportListSelect,
+  })
+}
+
+export async function getLPReportsForUser(userId: string) {
+  return db.lPReport.findMany({
+    where: { lpAccess: { some: { userId } } },
+    orderBy: { createdAt: 'desc' },
+    select: reportListSelect,
   })
 }
 
@@ -23,9 +33,10 @@ export type LPReportListItem = Awaited<ReturnType<typeof getLPReports>>[number]
 
 // ── Report detail ────────────────────────────────────────────
 
-export async function getLPReportById(id: string) {
-  return db.lPReport.findUnique({
-    where: { id },
+export async function getLPReportById(id: string, userId?: string) {
+  const where = userId ? { id, lpAccess: { some: { userId } } } : { id }
+  return db.lPReport.findFirst({
+    where,
     select: {
       id: true,
       title: true,

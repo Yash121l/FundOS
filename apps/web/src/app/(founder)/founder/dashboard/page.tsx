@@ -1,26 +1,16 @@
+import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
-import { getFounderCompany, getFounderKPIs } from '@/lib/founder'
+import { getFounderCompany, getFounderKPIs, getFounderMORStatus } from '@/lib/founder'
 import { FounderDashboard } from '@/components/founder/founder-dashboard'
 
 export const dynamic = 'force-dynamic'
 
-export default async function FounderDashboardPage() {
-  const clerkKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
-  if (!clerkKey) {
-    return (
-      <div className="text-center py-16 text-muted-foreground text-sm">
-        Authentication is not configured. Add Clerk environment variables to enable the founder portal.
-      </div>
-    )
-  }
-
-  const user = await getCurrentUser()
-  if (!user || user.role !== 'FOUNDER' || !user.companyId) redirect('/sign-in')
-
-  const [company, kpis] = await Promise.all([
-    getFounderCompany(user.companyId),
-    getFounderKPIs(user.companyId),
+async function FounderDashboardContent({ userId, companyId }: { userId: string; companyId: string }) {
+  const [company, kpis, morStatus] = await Promise.all([
+    getFounderCompany(companyId),
+    getFounderKPIs(companyId),
+    getFounderMORStatus(companyId),
   ])
 
   if (!company) {
@@ -31,5 +21,16 @@ export default async function FounderDashboardPage() {
     )
   }
 
-  return <FounderDashboard company={company} kpis={kpis} userName={user.name} />
+  return <FounderDashboard company={company} kpis={kpis} userName={userId} morStatus={morStatus} />
+}
+
+export default async function FounderDashboardPage() {
+  const user = await getCurrentUser()
+  if (!user || user.role !== 'FOUNDER' || !user.companyId) redirect('/sign-in')
+
+  return (
+    <Suspense fallback={<div className="p-5 text-[12px] text-muted-foreground animate-pulse">Loading dashboard…</div>}>
+      <FounderDashboardContent userId={user.name} companyId={user.companyId} />
+    </Suspense>
+  )
 }

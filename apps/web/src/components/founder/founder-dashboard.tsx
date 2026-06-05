@@ -3,9 +3,22 @@
 import Link from 'next/link'
 import { formatMrr, formatCurrency, formatRunway, formatGrowth, formatRelativeTime } from '@fundos/shared'
 import { HealthBadge } from '@fundos/ui'
-import { AlertTriangle, TrendingUp, Send, Newspaper, Clock, CheckCircle } from 'lucide-react'
+import { AlertTriangle, TrendingUp, Newspaper, Clock, CheckCircle, Send } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { FounderCompany } from '@/lib/founder'
+
+type MORStatus = {
+  reportingPeriod: string
+  dueDate: Date
+  daysUntilDue: number
+  isOverdue: boolean
+  isSubmitted: boolean
+  isDueSoon: boolean
+  currentMor: { id: string; status: string; submittedAt: Date | null; aiSummary: string | null; period: string; escalations: Array<{ severity: string; title: string }> } | null
+  recentMors: Array<{ id: string; period: string; status: string; submittedAt: Date | null; aiSummary: string | null; revenueVsBudgetPct: number | null; runway: number | null }>
+  currentWeekPing: { id: string; week: string; submittedAt: Date } | null
+  currentWeek: string
+}
 
 interface Props {
   company: FounderCompany
@@ -16,6 +29,7 @@ interface Props {
     prev: string
   }
   userName: string
+  morStatus: MORStatus
 }
 
 const RISK_SEVERITY_COLORS: Record<string, string> = {

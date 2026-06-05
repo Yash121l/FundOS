@@ -1,4 +1,5 @@
-import { auth } from '@clerk/nextjs/server'
+import { getSessionUser } from '@/lib/session'
+import { isInternalRole, type AppRole } from '@/lib/auth'
 import { PortfolioQAAgent } from '@fundos/ai'
 import { getAskContext } from '@/lib/ask-context'
 
@@ -8,11 +9,9 @@ export const dynamic = 'force-dynamic'
 const STREAM_TIMEOUT_MS = 30_000
 
 export async function POST(req: Request) {
-  // Belt-and-suspenders auth guard — middleware handles the edge, this catches cache/cold-start slippage
-  if (process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
-    const { userId } = await auth()
-    if (!userId) return new Response('Unauthorized', { status: 401 })
-  }
+  const user = await getSessionUser()
+  if (!user) return new Response('Unauthorized', { status: 401 })
+  if (!isInternalRole(user.role as AppRole)) return new Response('Forbidden', { status: 403 })
 
   let question: string
   try {

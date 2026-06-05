@@ -2,12 +2,13 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Send, Newspaper } from 'lucide-react'
+import { LayoutDashboard, FileText, TrendingUp, Newspaper } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const NAV = [
   { href: '/founder/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/founder/update', label: 'Submit Update', icon: Send },
+  { href: '/founder/update', label: 'Monthly MOR', icon: FileText },
+  { href: '/founder/weekly', label: 'Weekly KPI', icon: TrendingUp },
   { href: '/founder/news', label: 'Share News', icon: Newspaper },
 ]
 

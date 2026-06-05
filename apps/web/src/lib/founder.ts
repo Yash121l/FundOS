@@ -88,3 +88,59 @@ export async function getFounderFiledPeriods(companyId: string) {
   })
   return updates.map((u) => u.period)
 }
+
+// ── MOR status for founder portal ────────────────────────────
+
+export async function getFounderMORStatus(companyId: string) {
+  const now = new Date()
+  // The MOR currently "in window":
+  // Reporting period = previous calendar month (report on month that just ended)
+  // Due date = 10th of the current calendar month
+  const reportingYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear()
+  const reportingMonthNum = now.getMonth() === 0 ? 12 : now.getMonth()
+  const reportingPeriod = `${reportingYear}-${String(reportingMonthNum).padStart(2, '0')}`
+  const dueDate = new Date(now.getFullYear(), now.getMonth(), 10, 23, 59, 59)
+
+  const [currentMor, recentMors, currentWeekPing] = await Promise.all([
+    db.monthlyOperationsReport.findUnique({
+      where: { companyId_period: { companyId, period: reportingPeriod } },
+      select: { id: true, status: true, submittedAt: true, aiSummary: true, period: true, escalations: { where: { status: 'OPEN' }, select: { severity: true, title: true } } },
+    }),
+    db.monthlyOperationsReport.findMany({
+      where: { companyId },
+      orderBy: { period: 'desc' },
+      take: 6,
+      select: { id: true, period: true, status: true, submittedAt: true, aiSummary: true, revenueVsBudgetPct: true, runway: true },
+    }),
+    db.weeklyKpiPing.findFirst({
+      where: { companyId, week: getISOWeek(now) },
+      select: { id: true, week: true, submittedAt: true },
+    }),
+  ])
+
+  const daysUntilDue = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+  const isOverdue = now > dueDate && !currentMor
+  const isSubmitted = !!currentMor && currentMor.status !== 'PENDING'
+  const isDueSoon = !isSubmitted && daysUntilDue <= 5 && daysUntilDue >= 0
+
+  return {
+    reportingPeriod,
+    dueDate,
+    daysUntilDue,
+    isOverdue,
+    isSubmitted,
+    isDueSoon,
+    currentMor,
+    recentMors,
+    currentWeekPing,
+    currentWeek: getISOWeek(now),
+  }
+}
+
+function getISOWeek(date: Date): string {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7))
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
+  const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7)
+  return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`
+}

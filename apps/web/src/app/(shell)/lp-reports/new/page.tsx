@@ -1,10 +1,18 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { getCompaniesForReport, getQuarterOptions } from '@/lib/lp-reports'
+import { requireInternalUser } from '@/lib/auth'
 import { ReportConfigForm } from '@/components/lp-reports/report-config-form'
 
 export const dynamic = 'force-dynamic'
 
 export default async function NewLPReportPage() {
+  try {
+    await requireInternalUser()
+  } catch {
+    redirect('/lp-reports')
+  }
+
   const [companies, quarters] = await Promise.all([
     getCompaniesForReport().catch(() => []),
     Promise.resolve(getQuarterOptions()), // synchronous — Promise.all accepts non-promises

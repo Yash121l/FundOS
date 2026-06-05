@@ -2,6 +2,8 @@ import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import Link from 'next/link'
 import { getLPReportById } from '@/lib/lp-reports'
+import { getSessionUser } from '@/lib/session'
+import { isInternalRole, type AppRole } from '@/lib/auth'
 import { ReportViewer } from '@/components/lp-reports/report-viewer'
 
 export const dynamic = 'force-dynamic'
@@ -12,7 +14,9 @@ interface Props {
 
 export default async function LPReportDetailPage({ params }: Props) {
   const { id } = await params
-  const report = await getLPReportById(id)
+  const user = await getSessionUser()
+  const canViewAllReports = !!user && isInternalRole(user.role as AppRole)
+  const report = await getLPReportById(id, canViewAllReports ? undefined : user?.id)
   if (!report) notFound()
 
   return (

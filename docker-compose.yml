@@ -69,6 +69,8 @@ services:
       # Bind Next.js dev server to all interfaces so it is reachable from the host
       HOSTNAME: "0.0.0.0"
       PORT: "3000"
+      # Increase Node.js heap to prevent dev server restarts (which invalidate server action IDs)
+      NODE_OPTIONS: "--max-old-space-size=4096"
     ports:
       - "3008:3000"       # Access on http://localhost:3008
     volumes:

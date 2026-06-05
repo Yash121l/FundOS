@@ -38,13 +38,13 @@ export default async function ShellLayout({ children }: { children: React.ReactN
 
   return (
     <MobileSidebarProvider>
-      <div className="flex h-screen overflow-hidden bg-background">
+      <div className="shell-layout-root flex h-screen overflow-hidden bg-background">
         <Suspense fallback={<Sidebar />}>
           <SidebarWithBadges />
         </Suspense>
-        <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+        <div className="shell-layout-col flex flex-col flex-1 min-w-0 overflow-hidden">
           <Topbar user={user} />
-          <main className="flex-1 overflow-y-auto">
+          <main className="shell-layout-main flex-1 overflow-y-auto">
             <Suspense fallback={<div className="p-5 text-[12px] text-muted-foreground animate-pulse">Loading…</div>}>
               {children}
             </Suspense>

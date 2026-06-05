@@ -66,7 +66,7 @@ export function AddCompanyModal() {
 
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/60 z-50 backdrop-blur-sm" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-lg max-h-[90vh] overflow-y-auto bg-background border border-border rounded-xl shadow-2xl">
+        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[calc(100%-32px)] sm:w-full max-w-lg max-h-[90vh] overflow-y-auto bg-background border border-border rounded-xl shadow-2xl">
           <div className="flex items-center justify-between px-5 py-4 border-b border-border sticky top-0 bg-background">
             <Dialog.Title className="text-[14px] font-semibold">Add Portfolio Company</Dialog.Title>
             <Dialog.Close asChild>

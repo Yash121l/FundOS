@@ -1,12 +1,9 @@
 import { db } from '@fundos/database'
-import { currentPeriod } from '@fundos/shared'
 import type { AskContext } from '@fundos/types'
 import { getFundMetrics, getActiveTrends, getRecentAlerts } from './dashboard'
 import { withCache } from './cache'
 
 async function fetchAskContext(): Promise<AskContext> {
-  const period = currentPeriod()
-
   try {
     const [companies, fundMetrics, activeTrends, activeRisks, recentUpdateRows] = await Promise.all([
       db.company.findMany({
@@ -21,15 +18,16 @@ async function fetchAskContext(): Promise<AskContext> {
           healthScore: true,
           description: true,
           metrics: {
-            where: { period },
+            orderBy: { period: 'desc' },
+            take: 4, // current + 3 prior months for trend analysis
             select: {
+              period: true,
               mrr: true,
               revenueGrowthMom: true,
               burnRate: true,
               runway: true,
               headcount: true,
             },
-            take: 1,
           },
         },
         orderBy: { name: 'asc' },
@@ -63,6 +61,13 @@ async function fetchAskContext(): Promise<AskContext> {
         healthScore: c.healthScore,
         description: c.description,
         latestMetrics: c.metrics[0] ?? null,
+        metricsHistory: c.metrics.map((m) => ({
+          period: m.period,
+          mrr: m.mrr,
+          revenueGrowthMom: m.revenueGrowthMom,
+          burnRate: m.burnRate,
+          runway: m.runway,
+        })),
       })),
       fundMetrics: {
         totalMrr: fundMetrics.totalMrr,

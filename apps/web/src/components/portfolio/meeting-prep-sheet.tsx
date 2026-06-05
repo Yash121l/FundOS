@@ -13,6 +13,41 @@ interface MeetingPrepSheetProps {
   onClose: () => void
 }
 
+function InlineMarkdown({ text }: { text: string }) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g)
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (part.startsWith('**') && part.endsWith('**')) {
+          return <strong key={i} className="font-semibold text-foreground">{part.slice(2, -2)}</strong>
+        }
+        return <span key={i}>{part}</span>
+      })}
+    </>
+  )
+}
+
+function MarkdownBlock({ text }: { text: string }) {
+  const safe = typeof text === 'string' ? text : Array.isArray(text) ? (text as string[]).join('\n') : ''
+  const lines = safe.split('\n')
+  return (
+    <div className="space-y-1">
+      {lines.map((line, i) => {
+        if (typeof line === 'string' && (line.startsWith('- ') || line.startsWith('* '))) {
+          return (
+            <div key={i} className="flex gap-2">
+              <span className="text-muted-foreground flex-shrink-0 mt-0.5">·</span>
+              <span><InlineMarkdown text={line.slice(2)} /></span>
+            </div>
+          )
+        }
+        if (line === '') return <div key={i} className="h-1.5" />
+        return <p key={i}><InlineMarkdown text={line} /></p>
+      })}
+    </div>
+  )
+}
+
 function BriefSection({ icon: Icon, title, children }: {
   icon: React.ComponentType<{ size?: number; className?: string }>
   title: string
@@ -35,7 +70,7 @@ function BulletList({ items }: { items: string[] }) {
       {items.map((item, i) => (
         <li key={i} className="flex gap-2">
           <span className="text-muted-foreground mt-0.5 flex-shrink-0">·</span>
-          <span>{item}</span>
+          <span><InlineMarkdown text={item} /></span>
         </li>
       ))}
     </ul>
@@ -74,7 +109,6 @@ export function MeetingPrepSheet({ companyId, companyName, onClose }: MeetingPre
     void fetchBrief()
   }, [fetchBrief])
 
-  // Escape key closes the sheet
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose()
@@ -83,7 +117,6 @@ export function MeetingPrepSheet({ companyId, companyName, onClose }: MeetingPre
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [onClose])
 
-  // Focus trap — re-queries focusable elements on each state change so stale DOM refs are avoided
   useEffect(() => {
     const sheet = sheetRef.current
     if (!sheet) return
@@ -109,9 +142,9 @@ export function MeetingPrepSheet({ companyId, companyName, onClose }: MeetingPre
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop — hidden during print */}
       <div
-        className="fixed inset-0 bg-background/60 backdrop-blur-sm z-40"
+        className="print-backdrop fixed inset-0 bg-background/60 backdrop-blur-sm z-40"
         onClick={onClose}
       />
 
@@ -121,7 +154,7 @@ export function MeetingPrepSheet({ companyId, companyName, onClose }: MeetingPre
         role="dialog"
         aria-modal="true"
         aria-labelledby="meeting-brief-title"
-        className="fixed right-0 top-0 h-full w-full max-w-[480px] bg-card border-l border-border z-50 flex flex-col shadow-2xl print-sheet"
+        className="print-sheet fixed right-0 top-0 h-full w-[calc(100%-32px)] sm:w-full max-w-[480px] bg-card border-l border-border z-50 flex flex-col shadow-2xl"
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border flex-shrink-0 print:hidden">
@@ -161,7 +194,6 @@ export function MeetingPrepSheet({ companyId, companyName, onClose }: MeetingPre
           </p>
         </div>
 
-        {/* Re-fetch error banner (shown when brief already loaded but refresh failed) */}
         {refetchError && (
           <div className="mx-5 mt-3 rounded-md bg-destructive/10 border border-destructive/20 px-3 py-2 print:hidden">
             <p className="text-[12px] text-destructive">{refetchError}</p>
@@ -169,7 +201,7 @@ export function MeetingPrepSheet({ companyId, companyName, onClose }: MeetingPre
         )}
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-5 print:px-8">
+        <div className="flex-1 overflow-y-auto px-5 print:px-8 print:overflow-visible">
           {isLoading && !brief && (
             <div className="flex flex-col items-center justify-center h-full gap-3">
               <Loader2 size={20} className="animate-spin text-muted-foreground" />
@@ -193,15 +225,15 @@ export function MeetingPrepSheet({ companyId, companyName, onClose }: MeetingPre
           {brief && (
             <div className="py-5">
               <BriefSection icon={MessageSquare} title="Health Trajectory">
-                <p>{brief.healthTrajectory}</p>
+                <MarkdownBlock text={brief.healthTrajectory} />
               </BriefSection>
 
               <BriefSection icon={AlertTriangle} title="Open Risks">
-                <p className="whitespace-pre-line">{brief.openRisksSection}</p>
+                <MarkdownBlock text={brief.openRisksSection} />
               </BriefSection>
 
               <BriefSection icon={CheckSquare} title="Pending Actions from Fund Team">
-                <p className="whitespace-pre-line">{brief.pendingActionsSection}</p>
+                <MarkdownBlock text={brief.pendingActionsSection} />
               </BriefSection>
 
               <BriefSection icon={Lightbulb} title="Discussion Topics">
@@ -219,7 +251,6 @@ export function MeetingPrepSheet({ companyId, companyName, onClose }: MeetingPre
           )}
         </div>
       </div>
-
     </>
   )
 }

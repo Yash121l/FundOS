@@ -65,17 +65,69 @@ body {
 ::-webkit-scrollbar-thumb { background: oklch(0.28 0 0); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: oklch(0.36 0 0); }
 
-/* Print styles for LP report export */
+/* Print styles for LP report export and meeting prep */
 @media print {
-  body { background: white; color: black; font-family: Georgia, serif; }
-  nav, aside, header, footer, .print\:hidden { display: none !important; }
+  html, body {
+    height: auto !important;
+    overflow: visible !important;
+    background: white !important;
+    color: black !important;
+    font-family: Georgia, serif;
+  }
+
+  /* Shell layout overrides — remove height/overflow constraints so content flows across pages */
+  .shell-layout-root,
+  .shell-layout-col {
+    height: auto !important;
+    overflow: visible !important;
+    display: block !important;
+    flex: none !important;
+    min-width: 0 !important;
+  }
+  .shell-layout-main {
+    overflow: visible !important;
+    flex: none !important;
+    display: block !important;
+  }
+
+  /* Hide chrome */
+  nav, aside, header, footer,
+  .print\:hidden { display: none !important; }
   .print\:block { display: block !important; }
+
+  /* Typography */
   h1, h2, h3, h4 { color: black; }
+  a { color: black; text-decoration: none; }
+
+  /* Tables */
   table { border-collapse: collapse; width: 100%; }
   td, th { border: 1px solid #ccc; padding: 6px 10px; font-size: 12px; }
+
+  /* Quotes */
   blockquote { border-left: 3px solid #888; padding-left: 12px; color: #555; font-style: italic; }
-  a { color: black; text-decoration: none; }
-  @page { margin: 20mm; }
+
+  /* Page */
+  @page { margin: 20mm; size: A4 portrait; }
+
+  /* Report sections: allow breaking between cards, not inside */
+  .report-section-card {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Meeting prep sheet: convert from fixed overlay to normal flow */
+  .print-backdrop { display: none !important; }
+  .print-sheet {
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border-left: none !important;
+    flex: none !important;
+  }
+  .print-hidden { display: none !important; }
+  .print-block { display: block !important; }
 }
 
 /* Form input utility */
@@ -111,16 +163,4 @@ select.input {
   padding-right: 2rem;
 }
 
-@media print {
-  .print-hidden { display: none !important; }
-  .print-block { display: block !important; }
-  .print-sheet {
-    position: static !important;
-    width: 100% !important;
-    height: auto !important;
-    overflow: visible !important;
-    box-shadow: none !important;
-    border-left: none !important;
-    flex: none !important;
-  }
-}
+/* (print-sheet, print-hidden, print-block are defined in the block above) */

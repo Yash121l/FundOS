@@ -3,6 +3,12 @@
 import { db } from '@fundos/database'
 import { revalidatePath } from 'next/cache'
 
+async function revalidateCompany(companyId: string) {
+  const co = await db.company.findUnique({ where: { id: companyId }, select: { slug: true } })
+  revalidatePath('/portfolio')
+  if (co?.slug) revalidatePath(`/portfolio/${co.slug}`)
+}
+
 const VALID_ROUND_TYPES = new Set(['PRE_SEED', 'SEED', 'SERIES_A', 'SERIES_B', 'SERIES_C', 'SERIES_D', 'SERIES_E', 'BRIDGE', 'CONVERTIBLE', 'SAFE', 'OTHER'])
 const VALID_SECURITY_TYPES = new Set(['COMMON', 'PREFERRED', 'SAFE', 'CONVERTIBLE_NOTE', 'WARRANT', 'OTHER'])
 const VALID_VALUATION_METHODS = new Set(['LAST_ROUND', 'ARR_MULTIPLE', 'DCF', 'PWERM', 'OPM', 'NET_ASSETS'])
@@ -50,7 +56,7 @@ export async function createFundingRound(data: FundingRoundData): Promise<{ succ
         notes: data.notes || null,
       },
     })
-    revalidatePath(`/portfolio/${data.companyId}`)
+    await revalidateCompany(data.companyId)
     return { success: true, id: round.id }
   } catch (err) {
     console.error('[createFundingRound] failed', err)
@@ -76,14 +82,14 @@ export async function updateFundingRound(id: string, data: Omit<FundingRoundData
       notes: data.notes || null,
     },
   })
-  revalidatePath(`/portfolio/${round.companyId}`)
+  await revalidateCompany(round.companyId)
   return { success: true }
 }
 
 export async function deleteFundingRound(id: string): Promise<{ success: boolean }> {
   const round = await db.fundingRound.findUniqueOrThrow({ where: { id }, select: { companyId: true } })
   await db.fundingRound.delete({ where: { id } })
-  revalidatePath(`/portfolio/${round.companyId}`)
+  await revalidateCompany(round.companyId)
   return { success: true }
 }
 
@@ -128,14 +134,14 @@ export async function createFundInvestment(data: FundInvestmentData): Promise<{ 
       notes: data.notes || null,
     },
   })
-  revalidatePath(`/portfolio/${data.companyId}`)
+  await revalidateCompany(data.companyId)
   return { success: true, id: inv.id }
 }
 
 export async function deleteFundInvestment(id: string): Promise<{ success: boolean }> {
   const inv = await db.fundInvestment.findUniqueOrThrow({ where: { id }, select: { companyId: true } })
   await db.fundInvestment.delete({ where: { id } })
-  revalidatePath(`/portfolio/${inv.companyId}`)
+  await revalidateCompany(inv.companyId)
   return { success: true }
 }
 
@@ -175,7 +181,7 @@ export async function saveValuationMark(data: ValuationMarkData): Promise<{ succ
       status: data.status as never,
     },
   })
-  revalidatePath(`/portfolio/${data.companyId}`)
+  await revalidateCompany(data.companyId)
   revalidatePath('/fund')
   return { success: true, id: mark.id }
 }
@@ -185,7 +191,7 @@ export async function approveValuationMark(id: string, approvedBy: string): Prom
     where: { id },
     data: { status: 'APPROVED', approvedBy },
   })
-  revalidatePath(`/portfolio/${mark.companyId}`)
+  await revalidateCompany(mark.companyId)
   revalidatePath('/fund')
   return { success: true }
 }

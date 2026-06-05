@@ -107,7 +107,7 @@ function SignInForm() {
       </div>
 
       {/* ── Right: form panel ────────────────────────────────── */}
-      <div className="w-full lg:w-[420px] flex-shrink-0 flex flex-col items-center justify-center px-8 py-12">
+      <div className="w-full lg:w-[420px] flex-shrink-0 flex flex-col items-center justify-center px-5 sm:px-8 py-12">
         <div className="w-full max-w-[340px]">
 
           {/* Mobile-only logo */}

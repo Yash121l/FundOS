@@ -64,7 +64,7 @@ export function ReportSectionCard({ section, reportId }: ReportSectionProps) {
   }
 
   return (
-    <div className="rounded-xl border border-border bg-card print:border-none print:rounded-none print:bg-white print:break-inside-avoid">
+    <div className="report-section-card rounded-xl border border-border bg-card print:border-none print:rounded-none print:bg-white print:break-inside-avoid">
       <div className="flex items-center justify-between px-5 py-3 border-b border-border print:border-b print:border-border/30">
         <div className="flex items-center gap-2">
           <h2 className="text-[14px] font-semibold text-foreground">{section.title}</h2>

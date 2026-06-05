@@ -31,6 +31,23 @@ services:
       timeout: 3s
       retries: 5
 
+  # ── One-shot: install node_modules into the named volume ───────────────────
+  install:
+    build:
+      context: .
+      target: dev
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+    command: >
+      sh -c "
+        echo 'Installing pnpm workspace deps...' &&
+        cd /app &&
+        yes | pnpm install &&
+        echo 'Install complete'
+      "
+    restart: no
+
   # ── One-shot: run migrations + seed, then exit ──────────────────────────────
 
   migrate:
@@ -43,9 +60,14 @@ services:
       DIRECT_URL: postgresql://signalos:signalos@db:5432/signalos
       REDIS_URL: redis://redis:6379
       SEED_PASSWORD: ${SEED_PASSWORD:-Password123!}
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
     depends_on:
       db:
         condition: service_healthy
+      install:
+        condition: service_completed_successfully
     command: >
       sh -c "
         pnpm --filter @fundos/database generate &&
@@ -80,9 +102,11 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      install:
+        condition: service_completed_successfully
       migrate:
         condition: service_completed_successfully
-    # Run Next.js dev directly — avoids pnpm arg-quoting issues with --hostname flag
+    # Use the workspace-local next symlink (created by the install service)
     command: ["sh", "-c", "cd /app/apps/web && node_modules/.bin/next dev --hostname 0.0.0.0 --port 3000"]
     restart: unless-stopped
 
@@ -105,6 +129,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      install:
+        condition: service_completed_successfully
       migrate:
         condition: service_completed_successfully
     command: pnpm --filter @fundos/api dev

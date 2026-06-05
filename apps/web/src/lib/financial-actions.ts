@@ -4,6 +4,12 @@ import { db } from '@fundos/database'
 import { revalidatePath } from 'next/cache'
 import { getCurrentUser } from './auth'
 
+async function revalidateCompany(companyId: string) {
+  const co = await db.company.findUnique({ where: { id: companyId }, select: { slug: true } })
+  revalidatePath('/portfolio')
+  if (co?.slug) revalidatePath(`/portfolio/${co.slug}`)
+}
+
 // ── Module B: Income Statement ────────────────────────────────
 
 export interface IncomeStatementData {
@@ -45,7 +51,7 @@ export async function saveIncomeStatement(data: IncomeStatementData): Promise<{ 
     update: rest,
   })
 
-  revalidatePath(`/portfolio/${companyId}`)
+  await revalidateCompany(companyId)
   return { success: true }
 }
 
@@ -56,7 +62,7 @@ export async function deleteIncomeStatement(companyId: string, period: string): 
   }
 
   await db.incomeStatement.deleteMany({ where: { companyId, period } })
-  revalidatePath(`/portfolio/${companyId}`)
+  await revalidateCompany(companyId)
   return { success: true }
 }
 
@@ -103,7 +109,7 @@ export async function saveBalanceSheet(data: BalanceSheetData): Promise<{ succes
     update: rest,
   })
 
-  revalidatePath(`/portfolio/${companyId}`)
+  await revalidateCompany(companyId)
   return { success: true }
 }
 
@@ -143,7 +149,7 @@ export async function saveCashFlow(data: CashFlowData): Promise<{ success: boole
     update: rest,
   })
 
-  revalidatePath(`/portfolio/${companyId}`)
+  await revalidateCompany(companyId)
   return { success: true }
 }
 
@@ -184,6 +190,6 @@ export async function saveBudget(data: BudgetData): Promise<{ success: boolean }
     update: rest,
   })
 
-  revalidatePath(`/portfolio/${companyId}`)
+  await revalidateCompany(companyId)
   return { success: true }
 }

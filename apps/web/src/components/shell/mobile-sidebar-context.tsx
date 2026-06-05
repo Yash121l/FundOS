@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 
 interface MobileSidebarContextValue {
   isOpen: boolean
@@ -17,8 +17,8 @@ const MobileSidebarContext = createContext<MobileSidebarContextValue>({
 export function MobileSidebarProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false)
 
-  const open = () => setIsOpen(true)
-  const close = () => setIsOpen(false)
+  const open = useCallback(() => setIsOpen(true), [])
+  const close = useCallback(() => setIsOpen(false), [])
 
   // Prevent body scroll when sidebar is open on mobile
   useEffect(() => {

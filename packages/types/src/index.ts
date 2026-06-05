@@ -551,6 +551,13 @@ export interface AskContext {
       runway: number | null
       headcount: number | null
     } | null
+    metricsHistory: Array<{
+      period: string
+      mrr: number | null
+      revenueGrowthMom: number | null
+      burnRate: number | null
+      runway: number | null
+    }>
   }>
   fundMetrics: {
     totalMrr: number

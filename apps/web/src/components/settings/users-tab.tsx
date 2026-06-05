@@ -79,7 +79,7 @@ function InviteModal({ companies, onClose }: { companies: Company[]; onClose: ()
     <Dialog.Root open onOpenChange={(open) => { if (!open) onClose() }}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md bg-background border border-border rounded-xl shadow-2xl">
+        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[calc(100%-32px)] sm:w-full max-w-md bg-background border border-border rounded-xl shadow-2xl">
           <div className="flex items-center justify-between px-5 py-4 border-b border-border">
             <Dialog.Title className="text-[14px] font-semibold">Invite User</Dialog.Title>
             <Dialog.Close asChild>
@@ -263,7 +263,7 @@ export function UsersTab({ me, users, companies, lpReports }: Props) {
       {confirmDeleteId && (
         <>
           <div className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm" onClick={() => setConfirmDeleteId(null)} />
-          <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-sm bg-background border border-border rounded-xl shadow-2xl p-5 space-y-4">
+          <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[calc(100%-32px)] sm:w-full max-w-sm bg-background border border-border rounded-xl shadow-2xl p-5 space-y-4">
             <p className="text-[14px] font-semibold">Delete user "{confirmDeleteName}"?</p>
             <p className="text-[12px] text-muted-foreground">This cannot be undone.</p>
             <div className="flex gap-2 justify-end">
@@ -280,11 +280,11 @@ export function UsersTab({ me, users, companies, lpReports }: Props) {
         value={filter}
         onChange={(e) => setFilter(e.target.value)}
         placeholder="Filter by name, email, or role…"
-        className="input w-full max-w-sm h-8 text-[12px]"
+        className="input w-[calc(100%-32px)] sm:w-full max-w-sm h-8 text-[12px]"
       />
 
       {/* Stats row */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {(['ANALYST', 'PARTNER', 'FOUNDER', 'LP'] as const).map((role) => {
           const count = users.filter((u) => u.role === role).length
           return (

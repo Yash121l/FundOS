@@ -79,7 +79,7 @@ function UserMenu({ user }: { user: SessionUser }) {
       {isOpen && (
         <div
           role="menu"
-          className="absolute right-0 top-9 z-50 w-52 rounded-xl border border-border bg-card shadow-lg py-1"
+          className="absolute right-0 top-9 z-50 w-52 max-w-[calc(100vw-1rem)] rounded-xl border border-border bg-card shadow-lg py-1"
         >
           <div className="px-3 py-2.5 border-b border-border">
             <p className="text-[12px] font-medium truncate">{user.name}</p>

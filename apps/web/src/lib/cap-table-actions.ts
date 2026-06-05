@@ -3,6 +3,12 @@
 import { db } from '@fundos/database'
 import { revalidatePath } from 'next/cache'
 
+async function revalidateCompany(companyId: string) {
+  const co = await db.company.findUnique({ where: { id: companyId }, select: { slug: true } })
+  revalidatePath('/portfolio')
+  if (co?.slug) revalidatePath(`/portfolio/${co.slug}`)
+}
+
 const VALID_HOLDER_TYPES = new Set(['FOUNDER', 'EMPLOYEE', 'INVESTOR', 'OPTION_POOL', 'OTHER'])
 const VALID_ANTI_DILUTION = new Set(['NONE', 'BROAD_BASED', 'NARROW_BASED', 'FULL_RATCHET'])
 const VALID_SAFE_TYPES = new Set(['PRE_MONEY', 'POST_MONEY', 'MFN'])
@@ -50,14 +56,14 @@ export async function createCapTableEntry(data: CapTableEntryData): Promise<{ su
       boardSeat: data.boardSeat,
     },
   })
-  revalidatePath(`/portfolio/${data.companyId}`)
+  await revalidateCompany(data.companyId)
   return { success: true, id: entry.id }
 }
 
 export async function deleteCapTableEntry(id: string): Promise<{ success: boolean }> {
   const entry = await db.capTableEntry.findUniqueOrThrow({ where: { id } })
   await db.capTableEntry.delete({ where: { id } })
-  revalidatePath(`/portfolio/${entry.companyId}`)
+  await revalidateCompany(entry.companyId)
   return { success: true }
 }
 
@@ -94,7 +100,7 @@ export async function createSafeNote(data: SafeNoteData): Promise<{ success: boo
       triggerAmount: data.triggerAmount,
     },
   })
-  revalidatePath(`/portfolio/${data.companyId}`)
+  await revalidateCompany(data.companyId)
   return { success: true, id: note.id }
 }
 
@@ -109,14 +115,14 @@ export async function updateSafeNoteStatus(id: string, status: string, conversio
       conversionRoundId: conversionRoundId || null,
     },
   })
-  revalidatePath(`/portfolio/${note.companyId}`)
+  await revalidateCompany(note.companyId)
   return { success: true }
 }
 
 export async function deleteSafeNote(id: string): Promise<{ success: boolean }> {
   const note = await db.safeNote.findUniqueOrThrow({ where: { id } })
   await db.safeNote.delete({ where: { id } })
-  revalidatePath(`/portfolio/${note.companyId}`)
+  await revalidateCompany(note.companyId)
   return { success: true }
 }
 
@@ -150,14 +156,14 @@ export async function createConvertibleNote(data: ConvertibleNoteData): Promise<
       mfn: data.mfn,
     },
   })
-  revalidatePath(`/portfolio/${data.companyId}`)
+  await revalidateCompany(data.companyId)
   return { success: true, id: note.id }
 }
 
 export async function deleteConvertibleNote(id: string): Promise<{ success: boolean }> {
   const note = await db.convertibleNote.findUniqueOrThrow({ where: { id } })
   await db.convertibleNote.delete({ where: { id } })
-  revalidatePath(`/portfolio/${note.companyId}`)
+  await revalidateCompany(note.companyId)
   return { success: true }
 }
 
@@ -183,6 +189,6 @@ export async function saveOptionPool(data: OptionPoolData): Promise<{ success: b
       exercisedShares: data.exercisedShares,
     },
   })
-  revalidatePath(`/portfolio/${data.companyId}`)
+  await revalidateCompany(data.companyId)
   return { success: true }
 }

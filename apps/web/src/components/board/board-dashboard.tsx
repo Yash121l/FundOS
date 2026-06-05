@@ -97,7 +97,7 @@ export function BoardDashboardView({ data }: Props) {
       </div>
 
       {/* Summary stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
         {[
           { label: 'Board Meetings', value: meetings.length, icon: Calendar, sub: 'Total tracked' },
           { label: 'Follow-on Notes', value: followOnNotes.length, icon: FileText, sub: 'All periods' },
@@ -116,13 +116,13 @@ export function BoardDashboardView({ data }: Props) {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-border">
+      <div className="flex gap-1 border-b border-border overflow-x-auto">
         {TABS.map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
             className={cn(
-              'px-3 py-2 text-[12px] font-medium border-b-2 -mb-px transition-colors',
+              'px-3 py-2 text-[12px] font-medium border-b-2 -mb-px transition-colors flex-shrink-0 whitespace-nowrap',
               tab === t
                 ? 'border-primary text-foreground'
                 : 'border-transparent text-muted-foreground hover:text-foreground'

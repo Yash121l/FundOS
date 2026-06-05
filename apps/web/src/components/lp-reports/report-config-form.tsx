@@ -97,7 +97,7 @@ export function ReportConfigForm({ quarters, companies }: ReportConfigFormProps)
       {/* Quarter */}
       <div>
         <label htmlFor="quarter-select" className="block text-[12px] font-medium text-muted-foreground mb-1.5">Reporting Quarter</label>
-        <select id="quarter-select" value={quarter} onChange={(e) => setQuarter(e.target.value)} className="input w-full max-w-xs">
+        <select id="quarter-select" value={quarter} onChange={(e) => setQuarter(e.target.value)} className="input w-[calc(100%-32px)] sm:w-full max-w-xs">
           {quarters.map((q) => <option key={q} value={q}>{q}</option>)}
         </select>
       </div>

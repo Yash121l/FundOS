@@ -11,11 +11,7 @@ import { ActionsSection } from '@/components/portfolio/actions-section'
 import { TasksSection } from '@/components/portfolio/tasks-section'
 import { UpdatesTimeline } from '@/components/portfolio/updates-timeline'
 import { SignalsSection } from '@/components/portfolio/signals-section'
-import { MeetingPrepButton } from '@/components/portfolio/meeting-prep-button'
-import { LogMetricsModal } from '@/components/portfolio/log-metrics-modal'
-import { EditCompanySheet } from '@/components/portfolio/edit-company-sheet'
-import { LogMrrBridgeModal } from '@/components/financials/log-mrr-bridge-modal'
-import { LogUnitEconomicsModal } from '@/components/financials/log-unit-economics-modal'
+import { CompanyActionsMenu } from '@/components/portfolio/company-actions-menu'
 import { SaasMetricsSection } from '@/components/financials/saas-metrics-section'
 import { FinancialStatementsView } from '@/components/financials/financial-statements-view'
 import { InvestmentSection } from '@/components/investments/investment-section'
@@ -36,12 +32,33 @@ export default async function CompanyDetailPage({ params, searchParams }: Props)
   const company = await getCompanyBySlug(id)
   if (!company) notFound()
 
+  type Signals = Awaited<ReturnType<typeof getCompanySignals>>
+  type Statements = Awaited<ReturnType<typeof getFinancialStatements>>
+  type Saas = Awaited<ReturnType<typeof getSaasMetrics>>
+  type Investments = Awaited<ReturnType<typeof getCompanyInvestments>>
+  type CapTableData = Awaited<ReturnType<typeof getCapTable>>
+
+  const emptyStatements: Statements = { incomeStatements: [], balanceSheets: [], cashFlows: [], budgets: [] }
+  const emptySaas: Saas = { mrrBridges: [], unitEconomics: [] }
+  const emptyInvestments: Investments = { fundingRounds: [], investments: [] }
+  const emptyCapTable: CapTableData = { entries: [], safeNotes: [], convertibleNotes: [], optionPools: [] }
+
   const [companySignals, statements, saas, investments, capTable] = await Promise.all([
-    getCompanySignals(company.id),
-    getFinancialStatements(company.id),
-    getSaasMetrics(company.id),
-    getCompanyInvestments(company.id),
-    getCapTable(company.id),
+    tab === 'overview'
+      ? getCompanySignals(company.id).catch((): Signals => [])
+      : ([] as Signals),
+    tab === 'financials'
+      ? getFinancialStatements(company.id).catch(() => emptyStatements)
+      : emptyStatements,
+    tab === 'saas'
+      ? getSaasMetrics(company.id).catch(() => emptySaas)
+      : emptySaas,
+    tab === 'investments'
+      ? getCompanyInvestments(company.id).catch(() => emptyInvestments)
+      : emptyInvestments,
+    tab === 'captable'
+      ? getCapTable(company.id).catch(() => emptyCapTable)
+      : emptyCapTable,
   ])
 
   const metrics = company.metrics
@@ -53,19 +70,15 @@ export default async function CompanyDetailPage({ params, searchParams }: Props)
   return (
     <div className="flex flex-col">
         {/* Sticky header */}
-        <div className="sticky top-0 z-10 bg-background">
+        <div className="sticky top-0 z-10 bg-background relative">
           <CompanyHeader company={company} latest={latest} prev={prev} />
-          <div className="hidden md:flex md:absolute md:top-3 md:right-5 print:hidden items-center gap-2">
-            <LogMetricsModal companyId={company.id} companyName={company.name} />
-            <LogMrrBridgeModal companyId={company.id} companyName={company.name} />
-            <LogUnitEconomicsModal companyId={company.id} companyName={company.name} />
-            <MeetingPrepButton companyId={company.id} companyName={company.name} />
-            <EditCompanySheet company={company} />
+          <div className="absolute top-3 right-4">
+            <CompanyActionsMenu companyId={company.id} companyName={company.name} company={company} />
           </div>
         </div>
 
         {/* Tab navigation */}
-        <div className="px-5 pt-4">
+        <div className="px-4 sm:px-5 pt-4">
           <CompanyDetailTabs companySlug={company.slug} activeTab={tab} />
         </div>
 

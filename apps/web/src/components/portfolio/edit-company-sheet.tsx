@@ -28,10 +28,15 @@ interface Company {
 
 interface Props {
   company: Company
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
-export function EditCompanySheet({ company }: Props) {
-  const [open, setOpen] = useState(false)
+export function EditCompanySheet({ company, open: openProp, onOpenChange: onChangeProp }: Props) {
+  const [internalOpen, setInternalOpen] = useState(false)
+  const isControlled = openProp !== undefined
+  const open = isControlled ? openProp! : internalOpen
+  const setOpen = isControlled ? (v: boolean) => onChangeProp?.(v) : setInternalOpen
   const [pending, startTransition] = useTransition()
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
@@ -98,18 +103,20 @@ export function EditCompanySheet({ company }: Props) {
 
   return (
     <>
-      <button
-        onClick={() => setOpen(true)}
-        title="Edit company"
-        className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-      >
-        <Settings size={14} />
-      </button>
+      {!isControlled && (
+        <button
+          onClick={() => setOpen(true)}
+          title="Edit company"
+          className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+        >
+          <Settings size={14} />
+        </button>
+      )}
 
       {open && (
         <>
           <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40" onClick={() => setOpen(false)} />
-          <div className="fixed right-0 top-0 bottom-0 w-full max-w-lg bg-background border-l border-border z-50 flex flex-col shadow-2xl">
+          <div className="fixed right-0 top-0 bottom-0 w-[calc(100%-32px)] sm:w-full max-w-lg bg-background border-l border-border z-50 flex flex-col shadow-2xl">
             <div className="flex items-center justify-between px-5 py-4 border-b border-border">
               <h2 className="text-[14px] font-semibold">Edit Company</h2>
               <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground p-1 rounded transition-colors">

@@ -364,6 +364,35 @@ function risks(c: C, m: MetricRow): string {
   return `No material risks. Monitoring burn rate discipline as team scales. Pipeline coverage healthy at ${(2.8 + Math.random() * 1.2).toFixed(1)}× quota. Some elongation in enterprise deal cycles.`
 }
 
+function founderTone(c: C, ago: number): string {
+  if (c.health === 'AT_RISK') return ago <= 2 ? 'distressed' : 'cautious'
+  if (c.health === 'WATCHLIST') return ago <= 2 ? 'cautious' : 'uncertain'
+  return ago <= 3 ? 'confident' : 'uncertain'
+}
+
+function genUpdateAiSummary(c: C, m: MetricRow, ago: number): string {
+  const period = getPeriod(ago)
+  const sentiment = c.health === 'AT_RISK' ? 'concerning' : c.health === 'WATCHLIST' ? 'mixed' : 'strong'
+  const tone = founderTone(c, ago)
+  const runwayNote = m.runway < 9
+    ? ` Runway at ${m.runway.toFixed(0)} months — below safe threshold.`
+    : m.runway < 18
+      ? ` Runway ${m.runway.toFixed(0)} months — adequate.`
+      : ` Runway ${m.runway.toFixed(0)} months — comfortable.`
+  const burnNote = `Burn ${fmt(m.burnRate)}/month (${(m.burnRate / m.mrr * 100).toFixed(0)}% of MRR).`
+  const growthNote = c.g >= 0.03
+    ? `Growth healthy at ${pct(c.g)} MoM.`
+    : c.g >= 0.01
+      ? `Growth moderate at ${pct(c.g)} MoM.`
+      : `Growth sluggish at ${pct(c.g)} MoM — watch closely.`
+  const actionNote = c.health === 'AT_RISK'
+    ? ' Immediate fund team intervention recommended.'
+    : c.health === 'WATCHLIST'
+      ? ' Monitor closely over next 60 days.'
+      : ' On track vs. plan.'
+  return `${c.name} — ${sentiment} update for ${period}. MRR ${fmt(m.mrr)}. ${growthNote} ${burnNote}${runwayNote} Founder tone ${tone}.${actionNote}`
+}
+
 function hiring(c: C, m: MetricRow): string {
   const rolesMap: Record<string, string> = {
     'datadog': 'Senior SRE (3 open), Principal Software Engineer, Enterprise Solutions Architect',
@@ -840,10 +869,9 @@ async function main() {
           wins: wins(c, m, ago),
           risks: risks(c, m),
           hiringNeeds: hiring(c, m),
-          aiSummary: ago === 1
-            ? `${c.name} reported ${c.health === 'AT_RISK' ? 'concerning' : c.health === 'WATCHLIST' ? 'mixed' : 'strong'} results for ${period}. MRR at ${fmt(m.mrr)} (${pct(c.g)} MoM). Burn at ${fmt(m.burnRate)}/month with ${m.runway.toFixed(1)} months runway. ${c.health === 'AT_RISK' ? 'Immediate attention required.' : c.health === 'WATCHLIST' ? 'Monitoring burn and growth closely.' : 'On track vs. plan.'}`
-            : null,
-          aiProcessedAt: ago === 1 ? new Date() : null,
+          founderTone: founderTone(c, ago),
+          aiSummary: genUpdateAiSummary(c, m, ago),
+          aiProcessedAt: new Date(Date.now() - ago * 30 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000),
           reviewedAt: isReviewed ? new Date(Date.now() - ago * 30 * 24 * 60 * 60 * 1000) : null,
         },
       })
@@ -866,6 +894,80 @@ async function main() {
       }
     }
   }
+
+  // ── Fund Team Actions — pending items per company ────────────
+  const ACTIONS_DATA: Array<{
+    slug: string; title: string; description: string
+    priority: 'LOW' | 'MEDIUM' | 'HIGH'; status: 'PENDING' | 'IN_PROGRESS'
+    dueDaysFromNow: number
+  }> = [
+    { slug: 'datarobot', title: 'Review Agentic AI Platform pipeline update with CEO', description: 'Tim Whipple to share Q2 pipeline numbers for Agentic AI Platform. Assess if JPM pilot represents repeatable GTM motion. Prepare IC update memo.', priority: 'HIGH', status: 'IN_PROGRESS', dueDaysFromNow: 7 },
+    { slug: 'datarobot', title: 'Evaluate JPM Chase pilot conversion to enterprise contract', description: 'JP Morgan Chase pilot agreed for Q3. $2.4M TCV if converted. Need to track usage metrics and champion engagement through procurement.', priority: 'HIGH', status: 'PENDING', dueDaysFromNow: 21 },
+    { slug: 'tier', title: 'Assess H1 2027 merger integration milestones with co-founders', description: 'TIER+Dott combined entity targeting €200M revenue. Review integration KPIs: unified tech stack, city ops model, shared fleet management. Flag any leadership gaps.', priority: 'HIGH', status: 'PENDING', dueDaysFromNow: 14 },
+    { slug: 'tier', title: 'Track regulatory permit cap impact in Paris, Berlin, Barcelona', description: 'Three top revenue cities implementing stricter e-scooter permits. Quantify revenue risk if permits are cut by 30%. Prepare contingency plan for board.', priority: 'MEDIUM', status: 'PENDING', dueDaysFromNow: 30 },
+    { slug: 'rebel-foods', title: 'Review DRHP filing readiness with CFO', description: 'SEBI filing expected in Q3 2026. Confirm financial audits, ESOP restructuring, and IPO banking mandate completed. Flag open items.', priority: 'HIGH', status: 'IN_PROGRESS', dueDaysFromNow: 10 },
+    { slug: 'rebel-foods', title: 'Identify strategic acquirer alternatives if IPO is delayed', description: 'If IPO market conditions deteriorate, explore strategic M&A appetite from Zomato, Swiggy, or Grab as exit paths. Run confidential outreach.', priority: 'MEDIUM', status: 'PENDING', dueDaysFromNow: 45 },
+    { slug: 'cred', title: 'FY26 profitability milestone tracking — board call', description: 'CRED targeting EBITDA positive by Q4 FY26. Set up quarterly tracking call with Kunal Shah on key profit metrics: CRED Mint AUM, lending book NPA, CAC efficiency.', priority: 'MEDIUM', status: 'PENDING', dueDaysFromNow: 21 },
+    { slug: 'skit-ai', title: 'Close enterprise sales head hire (Divya Menon intro)', description: 'Strong candidate introduced via RTP network. Verify comp expectations and start date. Skit.ai needs enterprise sales leadership to accelerate NBFC expansion.', priority: 'HIGH', status: 'IN_PROGRESS', dueDaysFromNow: 7 },
+    { slug: 'skit-ai', title: 'Evaluate Series B fundraise readiness', description: 'Skit.ai at 30% MoM growth. Assess if current metrics support a $20-25M Series B at $80M pre-money. Suggest Goldman Sachs and Matrix Partners as co-investors.', priority: 'MEDIUM', status: 'PENDING', dueDaysFromNow: 45 },
+    { slug: 'mpower', title: 'Monitor SIDBI concessional debt facility application', description: 'MPower submitted SIDBI Green Line application. Track approval timeline (6 weeks). If approved, this unlocks ₹15 Cr at 6% interest — critical for solar portfolio growth.', priority: 'MEDIUM', status: 'IN_PROGRESS', dueDaysFromNow: 30 },
+    { slug: 'socure', title: 'Lead or co-lead Series G — maintain pro-rata', description: 'Socure at 62% ARR growth and 134% NDR. Expected Series G at $6.8B pre-money. RTP to commit $12M to maintain 2.2% stake. IC memo approved. Term sheet in progress.', priority: 'HIGH', status: 'IN_PROGRESS', dueDaysFromNow: 14 },
+    { slug: 'qonto', title: 'Track European banking license approval (ECB application)', description: 'Orrick engaged as regulatory counsel. ECB application submitted Q1 2026. Full license expected H2 2026. This is the key catalyst for Qonto IPO path. Track monthly.', priority: 'HIGH', status: 'PENDING', dueDaysFromNow: 30 },
+    { slug: 'dexif', title: 'Milestone check — 3 NBFC primary issuance partnerships', description: 'Dexif targeting 3 NBFC partnerships for primary bond issuance by end of Q2. Review progress with founders. This is the key inflection for platform GMV.', priority: 'MEDIUM', status: 'PENDING', dueDaysFromNow: 21 },
+    { slug: 'dehaat', title: 'Review FY25 profitability achievement and Series E prep', description: 'DeHaat reached profitability in FY25. Help management sharpen Series E narrative: path from ₹3,000 Cr to ₹5,000 Cr, margin expansion story, and Temasek engagement.', priority: 'MEDIUM', status: 'IN_PROGRESS', dueDaysFromNow: 14 },
+    { slug: 'newton-school', title: 'Review placement rate trajectory and ISA collection health', description: 'Placement rate at 87%. Monitor ISA collection rate (graduates who get placed and repay tuition). High ISA default would materially impact revenue model.', priority: 'MEDIUM', status: 'PENDING', dueDaysFromNow: 21 },
+  ]
+
+  let actionsCreated = 0
+  for (const a of ACTIONS_DATA) {
+    const cId = companyMap[a.slug]
+    if (!cId) continue
+    await db.action.create({
+      data: {
+        companyId: cId,
+        title: a.title,
+        description: a.description,
+        priority: a.priority,
+        status: a.status,
+        dueDate: new Date(Date.now() + a.dueDaysFromNow * 24 * 60 * 60 * 1000),
+      },
+    })
+    actionsCreated++
+  }
+  console.log(`  ✓ ${actionsCreated} fund team actions`)
+
+  // ── Opportunities ─────────────────────────────────────────────
+  const OPPORTUNITIES_DATA: Array<{
+    slug: string; title: string; description: string; category: string; status: 'OPEN' | 'ACTED_ON'
+  }> = [
+    { slug: 'socure', title: 'FedRAMP authorization → Federal agency expansion', description: 'Socure\'s FedRAMP High authorization opens a $1.2B+ TAM in US federal identity verification. Key agencies: SSA, VA, DHS. Estimated $30-50M incremental ARR opportunity over 3 years.', category: 'MARKET_EXPANSION', status: 'ACTED_ON' },
+    { slug: 'socure', title: 'Sequoia Series G co-investment opportunity', description: 'Sequoia Capital interested in co-leading Socure Series G alongside RTP. Could increase RTP allocation and bring strategic value from Sequoia\'s enterprise SaaS network.', category: 'CO_INVESTOR', status: 'OPEN' },
+    { slug: 'apollo-io', title: 'Sequoia Series C co-investment opportunity', description: 'RTP introduced Sequoia to Apollo.io. Sequoia in active diligence for Series C co-lead. Apollo.io at $150M ARR and accelerating — likely $250M ARR by close.', category: 'CO_INVESTOR', status: 'ACTED_ON' },
+    { slug: 'qonto', title: 'European banking license → full product suite unlock', description: 'Full ECB banking license allows Qonto to offer savings accounts, loans, and FX products directly. Estimated 2× revenue per customer at full banking license. Valuation catalyst before IPO.', category: 'PRODUCT_EXPANSION', status: 'OPEN' },
+    { slug: 'mpower', title: 'SIDBI concessional debt → 4× solar portfolio acceleration', description: 'If SIDBI Green Line approved, MPower can access ₹15 Cr at 6% vs. 14% market rate. This enables 4× more rooftop projects with same equity capital. Game-changing for growth trajectory.', category: 'STRATEGIC_PARTNERSHIP', status: 'ACTED_ON' },
+    { slug: 'tractable', title: 'Tokio Marine partnership → Asia claims expansion', description: 'Tractable signed pilot with Tokio Marine for 50K annual claims processing (€800K ACV). Path to full deployment across Tokio Marine\'s 6M policy book in Asia. Potential $8M ACV at full scale.', category: 'CUSTOMER_EXPANSION', status: 'ACTED_ON' },
+    { slug: 'miro', title: 'Google DeepMind enterprise deployment — 600 seats', description: 'RTP intro to Google DeepMind resulted in advanced procurement for 600 Miro seats. If closed, this validates Miro as the default AI team collaboration tool. Estimated $240K ARR.', category: 'CUSTOMER_EXPANSION', status: 'ACTED_ON' },
+    { slug: 'datarobot', title: 'JP Morgan Chase AI governance platform pilot', description: 'RTP facilitated intro to JPM procurement. $2.4M TCV pilot for AI governance and model lifecycle management. If converted, creates Fortune 50 logo and repeatable FSI GTM.', category: 'CUSTOMER_EXPANSION', status: 'OPEN' },
+    { slug: 'dehaat', title: 'Temasek Series E co-investor lead', description: 'RTP coaching management on Series E narrative. Temasek has $500M agricultural technology mandate and is the ideal Series E lead given DeHaat\'s profitability and farmer scale.', category: 'CO_INVESTOR', status: 'OPEN' },
+    { slug: 'cred', title: 'CRED Mint P2P lending → NBFC license upgrade', description: 'CRED Mint AUM at ₹2,000 Cr. Applying for NBFC license to offer direct lending products. This would triple addressable TAM and significantly improve margins vs. current P2P model.', category: 'REGULATORY', status: 'OPEN' },
+  ]
+
+  let oppsCreated = 0
+  for (const o of OPPORTUNITIES_DATA) {
+    const cId = companyMap[o.slug]
+    if (!cId) continue
+    await db.opportunity.create({
+      data: {
+        companyId: cId,
+        title: o.title,
+        description: o.description,
+        category: o.category,
+        status: o.status,
+      },
+    })
+    oppsCreated++
+  }
+  console.log(`  ✓ ${oppsCreated} opportunities`)
 
   // ── Founder user — linked to Socure ─────────────────────────
   await db.user.upsert({
@@ -1174,6 +1276,15 @@ async function main() {
         { period: getPeriod(6), rev: 28300000 * 3 * 0.82, burn: 17500000 * 3, cash: 160000000 },
         { period: getPeriod(3), rev: 28300000 * 3 * 0.91, burn: 18800000 * 3, cash: 170000000 },
         { period: getPeriod(0), rev: 28300000 * 3,         burn: 20000000 * 3, cash: 180000000 },
+      ],
+    },
+    {
+      slug: 'datarobot',
+      quarters: [
+        { period: getPeriod(9), rev: 18750000 * 3 * 0.97, burn: 20000000 * 3, cash: 168000000 },
+        { period: getPeriod(6), rev: 18750000 * 3 * 0.98, burn: 20000000 * 3, cash: 172000000 },
+        { period: getPeriod(3), rev: 18750000 * 3 * 0.99, burn: 20000000 * 3, cash: 176000000 },
+        { period: getPeriod(0), rev: 18750000 * 3,         burn: 20000000 * 3, cash: 180000000 },
       ],
     },
   ]
@@ -1515,6 +1626,17 @@ async function main() {
       { holderName: 'Climate Angels Fund', holderType: 'INVESTOR', shareClass: 'Preferred Seed', sharesIssued: 500000, ownershipFD: 4.1, liquidationPref: 1.0, participating: false, antiDilution: 'NONE', boardSeat: false },
       { holderName: 'Employee Pool', holderType: 'OPTION_POOL', shareClass: 'Common (Options)', sharesIssued: 800000, ownershipFD: 6.6, liquidationPref: null, participating: false, antiDilution: 'NONE', boardSeat: false },
       { holderName: 'Advisors', holderType: 'WARRANT', shareClass: 'Warrants', sharesIssued: 250000, ownershipFD: 2.1, liquidationPref: null, participating: false, antiDilution: 'NONE', boardSeat: false },
+    ],
+    'datarobot': [
+      { holderName: 'Jeremy Achin (CEO)', holderType: 'FOUNDER', shareClass: 'Common', sharesIssued: 18000000, ownershipFD: 13.6, liquidationPref: null, participating: false, antiDilution: 'NONE', boardSeat: true },
+      { holderName: 'Tom de Godoy (CTO)', holderType: 'FOUNDER', shareClass: 'Common', sharesIssued: 10000000, ownershipFD: 7.5, liquidationPref: null, participating: false, antiDilution: 'NONE', boardSeat: false },
+      { holderName: 'New Enterprise Associates', holderType: 'INVESTOR', shareClass: 'Preferred Series G', sharesIssued: 22000000, ownershipFD: 16.6, liquidationPref: 1.0, participating: false, antiDilution: 'WEIGHTED_AVERAGE_BROAD', boardSeat: true },
+      { holderName: 'In-Q-Tel', holderType: 'INVESTOR', shareClass: 'Preferred Series F', sharesIssued: 9000000, ownershipFD: 6.8, liquidationPref: 1.0, participating: false, antiDilution: 'WEIGHTED_AVERAGE_BROAD', boardSeat: false },
+      { holderName: 'Sapphire Ventures', holderType: 'INVESTOR', shareClass: 'Preferred Series E', sharesIssued: 7500000, ownershipFD: 5.7, liquidationPref: 1.0, participating: false, antiDilution: 'WEIGHTED_AVERAGE_BROAD', boardSeat: false },
+      { holderName: 'Atlas Venture', holderType: 'INVESTOR', shareClass: 'Preferred Series B', sharesIssued: 5000000, ownershipFD: 3.8, liquidationPref: 1.0, participating: false, antiDilution: 'WEIGHTED_AVERAGE_NARROW', boardSeat: true },
+      { holderName: 'RTP Global', holderType: 'INVESTOR', shareClass: 'Preferred Series G', sharesIssued: 1592357, ownershipFD: 1.2, liquidationPref: 1.0, participating: false, antiDilution: 'WEIGHTED_AVERAGE_BROAD', boardSeat: false },
+      { holderName: 'Employee Option Pool', holderType: 'OPTION_POOL', shareClass: 'Common (Options)', sharesIssued: 22000000, ownershipFD: 16.6, liquidationPref: null, participating: false, antiDilution: 'NONE', boardSeat: false },
+      { holderName: 'Early Engineering Team', holderType: 'EMPLOYEE', shareClass: 'Common', sharesIssued: 8000000, ownershipFD: 6.0, liquidationPref: null, participating: false, antiDilution: 'NONE', boardSeat: false },
     ],
     'socure': [
       { holderName: 'Johnny Ayers (CEO)', holderType: 'FOUNDER', shareClass: 'Common', sharesIssued: 8000000, ownershipFD: 8.0, liquidationPref: null, participating: false, antiDilution: 'NONE', boardSeat: true },

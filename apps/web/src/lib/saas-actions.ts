@@ -4,6 +4,12 @@ import { db } from '@fundos/database'
 import { revalidatePath } from 'next/cache'
 import { getCurrentUser } from './auth'
 
+async function revalidateCompany(companyId: string) {
+  const co = await db.company.findUnique({ where: { id: companyId }, select: { slug: true } })
+  revalidatePath('/portfolio')
+  if (co?.slug) revalidatePath(`/portfolio/${co.slug}`)
+}
+
 // ── Module C: MRR Bridge ──────────────────────────────────────
 
 export interface MrrBridgeData {
@@ -75,7 +81,7 @@ export async function logMrrBridge(data: MrrBridgeData): Promise<{ success: bool
     },
   })
 
-  revalidatePath(`/portfolio/${data.companyId}`)
+  await revalidateCompany(data.companyId)
   return { success: true }
 }
 
@@ -141,6 +147,6 @@ export async function logUnitEconomics(data: UnitEconomicsData): Promise<{ succe
     },
   })
 
-  revalidatePath(`/portfolio/${data.companyId}`)
+  await revalidateCompany(data.companyId)
   return { success: true }
 }

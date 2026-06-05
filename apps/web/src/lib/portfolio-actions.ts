@@ -23,8 +23,8 @@ const MAX_SLUG_ATTEMPTS = 100
 
 const VALID_SECTORS = new Set(['SAAS', 'FINTECH', 'AI', 'DEVTOOLS', 'CLIMATETECH', 'HEALTHTECH', 'MARKETPLACE', 'INFRASTRUCTURE', 'OTHER'])
 const VALID_STAGES = new Set(['PRE_SEED', 'SEED', 'SERIES_A', 'SERIES_B', 'SERIES_C', 'GROWTH'])
-const VALID_STATUSES = new Set(['ACTIVE', 'EXITED', 'INACTIVE', 'WATCHLIST', 'DEAD'])
-const VALID_HEALTH_STATUSES = new Set(['HEALTHY', 'WATCHLIST', 'AT_RISK', 'CRITICAL'])
+const VALID_STATUSES = new Set(['ACTIVE', 'EXITED', 'WRITTEN_OFF', 'WATCH'])
+const VALID_HEALTH_STATUSES = new Set(['HEALTHY', 'WATCHLIST', 'AT_RISK'])
 
 function validateEnums(data: Pick<CreateCompanyData, 'sector' | 'stage' | 'status' | 'healthStatus'>) {
   if (!VALID_SECTORS.has(data.sector)) throw new Error(`Invalid sector: ${data.sector}`)
@@ -99,8 +99,9 @@ export async function updateCompany(data: UpdateCompanyData): Promise<{ success:
   validateEnums(data)
   const user = await getCurrentUser()
 
-  await db.company.update({
+  const updated = await db.company.update({
     where: { id: data.id },
+    select: { slug: true },
     data: {
       name: data.name,
       sector: data.sector as never,
@@ -126,7 +127,7 @@ export async function updateCompany(data: UpdateCompanyData): Promise<{ success:
   })
 
   revalidatePath('/portfolio')
-  revalidatePath(`/portfolio/${data.id}`)
+  revalidatePath(`/portfolio/${updated.slug}`)
   return { success: true }
 }
 
@@ -177,6 +178,8 @@ export async function logMetricSnapshot(data: MetricSnapshotData): Promise<{ suc
       ? (data.mrr - prev.mrr) / prev.mrr
       : null
 
+  const company = await db.company.findUnique({ where: { id: data.companyId }, select: { slug: true } })
+
   await db.metricSnapshot.upsert({
     where: { companyId_period: { companyId: data.companyId, period: data.period } },
     create: {
@@ -209,6 +212,30 @@ export async function logMetricSnapshot(data: MetricSnapshotData): Promise<{ suc
     },
   })
 
-  revalidatePath(`/portfolio/${data.companyId}`)
+  revalidatePath('/portfolio')
+  if (company?.slug) revalidatePath(`/portfolio/${company.slug}`)
   return { success: true }
+}
+
+// ── Export ────────────────────────────────────────────────────
+
+export async function getPortfolioExportData() {
+  const { currentPeriod } = await import('@fundos/shared')
+  const period = currentPeriod()
+  return db.company.findMany({
+    where: { status: 'ACTIVE' },
+    select: {
+      name: true, sector: true, stage: true, country: true,
+      foundedYear: true, website: true, healthStatus: true, healthScore: true,
+      metrics: {
+        where: { period },
+        select: {
+          mrr: true, arr: true, revenueGrowthMom: true,
+          burnRate: true, runway: true, headcount: true, grossMargin: true,
+        },
+        take: 1,
+      },
+    },
+    orderBy: { name: 'asc' },
+  })
 }

@@ -76,7 +76,7 @@ export function LPManagementView({ data }: Props) {
         <p className="text-[12px] text-red-400 px-1">{actionError}</p>
       )}
       {/* Summary stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
         {[
           { label: 'Total Commitment', value: fmtM(totalCommitment), icon: DollarSign, sub: `${lpEntities.length} LPs` },
           { label: 'Called to Date', value: fmtM(totalCalled), icon: CheckCircle2, sub: `${totalCommitment > 0 ? fmtPct(totalCalled / totalCommitment) : '0%'} call rate` },
@@ -95,14 +95,14 @@ export function LPManagementView({ data }: Props) {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-border">
+      <div className="flex gap-1 border-b border-border overflow-x-auto">
         {TABS.map((t) => (
           <button
             key={t}
             type="button"
             onClick={() => setTab(t)}
             className={cn(
-              'px-3 py-2 text-[12px] font-medium border-b-2 -mb-px transition-colors',
+              'px-3 py-2 text-[12px] font-medium border-b-2 -mb-px transition-colors flex-shrink-0 whitespace-nowrap',
               tab === t
                 ? 'border-primary text-foreground'
                 : 'border-transparent text-muted-foreground hover:text-foreground'

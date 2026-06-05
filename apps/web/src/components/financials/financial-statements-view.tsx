@@ -225,17 +225,17 @@ export function FinancialStatementsView({ companyId, statements }: Props) {
 
   return (
     <div className="rounded-xl border border-border bg-card p-4">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <p className="text-[13px] font-medium flex items-center gap-2">
           <FileText size={14} className="text-muted-foreground" />
           Financial Statements
         </p>
-        <div className="flex items-center gap-1 rounded-lg border border-border p-0.5">
+        <div className="flex items-center gap-1 rounded-lg border border-border p-0.5 flex-shrink-0">
           {(['pl', 'bs', 'cf'] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={cn('h-6 px-3 rounded-md text-[11px] font-medium transition-colors', tab === t ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground')}
+              className={cn('h-6 px-2 sm:px-3 rounded-md text-[11px] font-medium transition-colors whitespace-nowrap', tab === t ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground')}
             >
               {t === 'pl' ? 'P&L' : t === 'bs' ? 'Balance Sheet' : 'Cash Flow'}
             </button>
@@ -312,7 +312,7 @@ function IncomeStatementForm({ companyId, onClose }: { companyId: string; onClos
     <Dialog.Root open onOpenChange={() => onClose()}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/60 z-50 backdrop-blur-sm" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-lg max-h-[90vh] overflow-y-auto bg-background border border-border rounded-xl shadow-2xl">
+        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[calc(100%-32px)] sm:w-full max-w-lg max-h-[90vh] overflow-y-auto bg-background border border-border rounded-xl shadow-2xl">
           <div className="flex items-center justify-between px-5 py-4 border-b border-border sticky top-0 bg-background">
             <Dialog.Title className="text-[14px] font-semibold">Log Income Statement</Dialog.Title>
             <button aria-label="Close dialog" onClick={onClose} className="text-muted-foreground hover:text-foreground p-1 rounded"><X size={15} /></button>
@@ -382,7 +382,7 @@ function BalanceSheetForm({ companyId, onClose }: { companyId: string; onClose: 
     <Dialog.Root open onOpenChange={() => onClose()}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/60 z-50 backdrop-blur-sm" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-lg max-h-[90vh] overflow-y-auto bg-background border border-border rounded-xl shadow-2xl">
+        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[calc(100%-32px)] sm:w-full max-w-lg max-h-[90vh] overflow-y-auto bg-background border border-border rounded-xl shadow-2xl">
           <div className="flex items-center justify-between px-5 py-4 border-b border-border sticky top-0 bg-background">
             <Dialog.Title className="text-[14px] font-semibold">Log Balance Sheet</Dialog.Title>
             <button aria-label="Close dialog" onClick={onClose} className="text-muted-foreground hover:text-foreground p-1 rounded"><X size={15} /></button>
@@ -451,7 +451,7 @@ function CashFlowForm({ companyId, onClose }: { companyId: string; onClose: () =
     <Dialog.Root open onOpenChange={() => onClose()}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/60 z-50 backdrop-blur-sm" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-lg max-h-[90vh] overflow-y-auto bg-background border border-border rounded-xl shadow-2xl">
+        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[calc(100%-32px)] sm:w-full max-w-lg max-h-[90vh] overflow-y-auto bg-background border border-border rounded-xl shadow-2xl">
           <div className="flex items-center justify-between px-5 py-4 border-b border-border sticky top-0 bg-background">
             <Dialog.Title className="text-[14px] font-semibold">Log Cash Flow Statement</Dialog.Title>
             <button aria-label="Close dialog" onClick={onClose} className="text-muted-foreground hover:text-foreground p-1 rounded"><X size={15} /></button>

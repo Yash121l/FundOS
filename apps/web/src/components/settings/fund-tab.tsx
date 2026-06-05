@@ -125,7 +125,7 @@ export function FundTab({ fund }: Props) {
         </div>
       ) : (
         <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Fund Name *">
               <input type="text" value={form.name} onChange={(e) => s('name', e.target.value)} className="input w-full" placeholder="RTP Global Fund III" />
             </Field>

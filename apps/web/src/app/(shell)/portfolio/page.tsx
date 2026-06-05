@@ -13,12 +13,7 @@ interface Props {
 
 async function PortfolioData({ health }: { health: string }) {
   const companies = await getAllCompanies()
-  return (
-    <>
-      <ExportButton data={companies} />
-      <PortfolioTable data={companies} initialHealth={health} />
-    </>
-  )
+  return <PortfolioTable data={companies} initialHealth={health} />
 }
 
 export default async function PortfolioPage({ searchParams }: Props) {
@@ -29,6 +24,7 @@ export default async function PortfolioPage({ searchParams }: Props) {
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <h1 className="text-[16px] font-semibold">Portfolio</h1>
         <div className="flex items-center gap-2">
+          <ExportButton />
           <CompanyImportModal />
           <AddCompanyModal />
         </div>

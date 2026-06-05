@@ -10,10 +10,15 @@ import { cn } from '@/lib/utils'
 interface Props {
   companyId: string
   companyName: string
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
-export function LogMetricsModal({ companyId, companyName }: Props) {
-  const [open, setOpen] = useState(false)
+export function LogMetricsModal({ companyId, companyName, open: openProp, onOpenChange: onChangeProp }: Props) {
+  const [internalOpen, setInternalOpen] = useState(false)
+  const isControlled = openProp !== undefined
+  const open = isControlled ? openProp! : internalOpen
+  const setOpen = isControlled ? (v: boolean) => onChangeProp?.(v) : setInternalOpen
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
@@ -75,16 +80,16 @@ export function LogMetricsModal({ companyId, companyName }: Props) {
 
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
-      <Dialog.Trigger asChild>
+      {!isControlled && <Dialog.Trigger asChild>
         <button className="flex items-center gap-1.5 h-7 px-2.5 rounded-md border border-border text-[12px] text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
           <BarChart3 size={12} />
           Log Metrics
         </button>
-      </Dialog.Trigger>
+      </Dialog.Trigger>}
 
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/60 z-50 backdrop-blur-sm" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md max-h-[90vh] overflow-y-auto bg-background border border-border rounded-xl shadow-2xl">
+        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[calc(100%-32px)] sm:w-full max-w-md max-h-[90vh] overflow-y-auto bg-background border border-border rounded-xl shadow-2xl">
           <div className="flex items-center justify-between px-5 py-4 border-b border-border sticky top-0 bg-background">
             <div>
               <Dialog.Title className="text-[14px] font-semibold">Log Metrics</Dialog.Title>

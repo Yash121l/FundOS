@@ -49,9 +49,28 @@ export function SettingsShell({ me, isWriter, users, companies, lpReports, fund 
         </p>
       </div>
 
+      {/* Mobile: horizontal scrollable tab bar */}
+      <div className="flex sm:hidden gap-1 overflow-x-auto pb-2 mb-4 border-b border-border">
+        {visibleTabs.map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            onClick={() => setTab(id)}
+            className={cn(
+              'flex items-center gap-1.5 h-8 px-3 rounded-md text-[12px] font-medium flex-shrink-0 whitespace-nowrap transition-colors',
+              tab === id
+                ? 'bg-secondary text-foreground'
+                : 'text-muted-foreground hover:text-foreground hover:bg-secondary/60'
+            )}
+          >
+            <Icon size={13} className="flex-shrink-0" />
+            {label}
+          </button>
+        ))}
+      </div>
+
       <div className="flex gap-6">
-        {/* Sidebar nav */}
-        <aside className="w-44 flex-shrink-0">
+        {/* Desktop: sidebar nav */}
+        <aside className="hidden sm:block w-44 flex-shrink-0">
           <nav className="space-y-px">
             {visibleTabs.map(({ id, label, icon: Icon }) => (
               <button

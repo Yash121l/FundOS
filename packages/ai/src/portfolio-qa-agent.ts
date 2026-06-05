@@ -1,8 +1,21 @@
 import type { AskContext } from '@fundos/types'
 import { getOpenAIClient, MODEL_SMART } from './client'
-import type OpenAI from 'openai'
+import { searchWeb, formatSearchResults, isWebSearchConfigured } from './web-search'
+import type { ChatCompletionMessageParam, ChatCompletionTool, ChatCompletionAssistantMessageParam } from 'openai/resources/chat/completions'
 
 const SYSTEM_PROMPT = `You are the portfolio intelligence AI for SignalOS, a venture capital operating platform.
+You have access to live portfolio data AND a web search tool to retrieve current news and market updates.
+
+Rules:
+- For questions about internal portfolio metrics, trends, or health — use the portfolio data provided.
+- For questions about latest news, recent developments, current market conditions, or external company updates — call the search_web tool to get fresh information.
+- Be specific: cite company names, exact metrics, and periods.
+- Format clearly: use markdown headers, bullets, and tables where appropriate.
+- Cite search results with their source URLs when using web data.
+- Do not hallucinate metrics. Only use the portfolio data or verified search results.
+- Keep responses concise but complete.`
+
+const SYSTEM_PROMPT_NO_SEARCH = `You are the portfolio intelligence AI for SignalOS, a venture capital operating platform.
 You have access to live portfolio data and answer questions from VC partners with precision.
 Rules:
 - Be specific: cite company names, exact metrics, and periods.
@@ -12,7 +25,26 @@ Rules:
 - Do not hallucinate metrics. Only use the portfolio data provided.
 - Keep responses concise but complete.`
 
-// Configurable truncation lengths (chars) — adjust if token budget allows
+// OpenAI tool definition for web search
+const SEARCH_TOOL: ChatCompletionTool = {
+  type: 'function',
+  function: {
+    name: 'search_web',
+    description: 'Search the web for latest news, recent events, or current information about a company or topic. Use this when the user asks about recent updates, latest news, or information that may not be in the portfolio data.',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          description: 'The search query. Be specific — include company name and what you want to know (e.g. "DataRobot latest funding round 2026" or "Socure recent enterprise clients news").',
+        },
+      },
+      required: ['query'],
+    },
+  },
+}
+
+// Configurable truncation lengths (chars)
 const UPDATE_WINS_TRUNCATE = 100
 const UPDATE_RISKS_TRUNCATE = 100
 const TREND_SUMMARY_TRUNCATE = 120
@@ -44,74 +76,85 @@ export class PortfolioQAAgent {
     context: AskContext,
     client: NonNullable<ReturnType<typeof getOpenAIClient>>
   ): Promise<ReadableStream<Uint8Array>> {
-    const messages = this.buildMessages(question, context)
+    const webSearchEnabled = isWebSearchConfigured()
+    const messages = this.buildMessages(question, context, webSearchEnabled)
     const startTime = Date.now()
-
-    const promptLength = messages.reduce((n, m) => n + (typeof m.content === 'string' ? m.content.length : 0), 0)
-    const userMsg = messages.find((m) => m.role === 'user')
-    const promptSnippet = typeof userMsg?.content === 'string' ? userMsg.content.slice(0, 500) : ''
 
     console.info('[PortfolioQA] AI execution started', {
       model: MODEL_SMART,
       question,
+      webSearchEnabled,
       contextSize: {
         companies: context.companies.length,
         updates: context.recentUpdates.length,
         trends: context.activeTrends.length,
         risks: context.activeRisks.length,
       },
-      promptLength,
-      promptSnippet,
     })
 
     try {
-      const response = await client.chat.completions.create({
+      // Without web search: skip tool detection and stream directly
+      if (!webSearchEnabled) {
+        return this.streamFinalAnswer(client, messages, startTime)
+      }
+
+      // Phase 1: non-streaming call with tools so the model can invoke search_web
+      const toolResponse = await client.chat.completions.create({
         model: MODEL_SMART,
         messages,
-        stream: true,
-        stream_options: { include_usage: true },
+        tools: [SEARCH_TOOL],
+        tool_choice: 'auto',
         temperature: 0.25,
         max_tokens: 1500,
       })
 
-      let outputText = ''
-      let totalTokens = 0
-      const encoder = new TextEncoder()
+      const choice = toolResponse.choices[0]
+      const toolCalls = choice?.message?.tool_calls ?? []
 
-      return new ReadableStream<Uint8Array>({
-        async start(controller) {
-          let streamErr: unknown = null
+      // If the model wants to search the web, execute all tool calls and add results
+      if (toolCalls.length > 0) {
+        const augmentedMessages: ChatCompletionMessageParam[] = [
+          ...messages,
+          choice!.message as ChatCompletionAssistantMessageParam,
+        ]
+
+        for (const call of toolCalls) {
+          if (call.function.name !== 'search_web') continue
+          let query = ''
           try {
-            for await (const chunk of response) {
-              const text = chunk.choices[0]?.delta?.content ?? ''
-              if (text) {
-                outputText += text
-                controller.enqueue(encoder.encode(text))
-              }
-              if (chunk.usage) totalTokens = chunk.usage.total_tokens
-            }
-            console.info('[PortfolioQA] AI execution completed', {
-              model: MODEL_SMART,
-              durationMs: Date.now() - startTime,
-              tokens: totalTokens,
-              outputLength: outputText.length,
-              output: outputText.slice(0, 500), // log first 500 chars
-            })
-          } catch (err) {
-            streamErr = err
-            console.error('[PortfolioQA] Stream read error', {
-              durationMs: Date.now() - startTime,
-              error: err instanceof Error ? err.message : String(err),
-            })
-          } finally {
-            if (streamErr) {
-              controller.error(streamErr instanceof Error ? streamErr : new Error(String(streamErr)))
-            } else {
-              controller.close()
-            }
+            query = (JSON.parse(call.function.arguments) as { query: string }).query
+          } catch {
+            query = question
           }
-        },
-      })
+
+          console.info('[PortfolioQA] Executing web search', { query })
+          const searchResult = await searchWeb(query)
+          const formatted = formatSearchResults(searchResult)
+          console.info('[PortfolioQA] Web search completed', {
+            query,
+            provider: searchResult.provider,
+            resultCount: searchResult.results.length,
+          })
+
+          augmentedMessages.push({
+            role: 'tool',
+            tool_call_id: call.id,
+            content: formatted,
+          })
+        }
+
+        // Phase 2: stream the final answer using search results
+        return this.streamFinalAnswer(client, augmentedMessages, startTime)
+      }
+
+      // No tool calls — stream directly from the first response content
+      const directContent = choice?.message?.content ?? ''
+      if (directContent) {
+        return this.streamText(directContent)
+      }
+
+      // Fallback: re-ask in streaming mode
+      return this.streamFinalAnswer(client, messages, startTime)
     } catch (error) {
       console.error('[PortfolioQA] AI execution failed, falling back to rules', {
         model: MODEL_SMART,
@@ -122,11 +165,83 @@ export class PortfolioQAAgent {
     }
   }
 
+  private streamFinalAnswer(
+    client: NonNullable<ReturnType<typeof getOpenAIClient>>,
+    messages: ChatCompletionMessageParam[],
+    startTime: number
+  ): ReadableStream<Uint8Array> {
+    const encoder = new TextEncoder()
+
+    return new ReadableStream<Uint8Array>({
+      async start(controller) {
+        let outputText = ''
+        let totalTokens = 0
+        let streamErr: unknown = null
+        try {
+          const stream = await client.chat.completions.create({
+            model: MODEL_SMART,
+            messages,
+            stream: true,
+            stream_options: { include_usage: true },
+            temperature: 0.25,
+            max_tokens: 1500,
+          })
+          for await (const chunk of stream) {
+            const text = chunk.choices[0]?.delta?.content ?? ''
+            if (text) {
+              outputText += text
+              controller.enqueue(encoder.encode(text))
+            }
+            if (chunk.usage) totalTokens = chunk.usage.total_tokens
+          }
+          console.info('[PortfolioQA] AI streaming completed', {
+            model: MODEL_SMART,
+            durationMs: Date.now() - startTime,
+            tokens: totalTokens,
+            outputLength: outputText.length,
+          })
+        } catch (err) {
+          streamErr = err
+          console.error('[PortfolioQA] Stream read error', {
+            durationMs: Date.now() - startTime,
+            error: err instanceof Error ? err.message : String(err),
+          })
+        } finally {
+          if (streamErr) {
+            controller.error(streamErr instanceof Error ? streamErr : new Error(String(streamErr)))
+          } else {
+            controller.close()
+          }
+        }
+      },
+    })
+  }
+
+  private streamText(text: string): ReadableStream<Uint8Array> {
+    const encoder = new TextEncoder()
+    const tokens = text.split(/(?<=\s)|(?=\s)/)
+    return new ReadableStream<Uint8Array>({
+      async start(controller) {
+        for (const token of tokens) {
+          controller.enqueue(encoder.encode(token))
+          await new Promise<void>((resolve) => setTimeout(resolve, 8))
+        }
+        controller.close()
+      },
+    })
+  }
+
   private streamFallback(question: string, context: AskContext): ReadableStream<Uint8Array> {
     const answer = this.buildRuleBasedAnswer(question, context)
+    const encoder = new TextEncoder()
+    const tokens = answer.split(/(?<=\s)|(?=\s)/)
+
     return new ReadableStream<Uint8Array>({
-      start(controller) {
-        controller.enqueue(new TextEncoder().encode(answer))
+      async start(controller) {
+        for (const token of tokens) {
+          controller.enqueue(encoder.encode(token))
+          await new Promise<void>((resolve) => setTimeout(resolve, 18))
+        }
         controller.close()
       },
     })
@@ -146,15 +261,23 @@ export class PortfolioQAAgent {
 
   private buildMessages(
     question: string,
-    context: AskContext
-  ): OpenAI.Chat.ChatCompletionMessageParam[] {
+    context: AskContext,
+    webSearchEnabled: boolean
+  ): ChatCompletionMessageParam[] {
     const fmt = (v: number) => this.formatCurrency(v)
 
     const cappedCompanies = context.companies.slice(0, MAX_COMPANIES_IN_PROMPT)
     const companiesBlock = cappedCompanies
       .map((c) => {
         const m = c.latestMetrics
-        return `- [${c.name}] ${c.sector}/${c.stage} · Health: ${c.healthStatus} (${c.healthScore}) · MRR: ${m?.mrr ? fmt(m.mrr) : 'N/A'} · Growth: ${m?.revenueGrowthMom != null ? `${(m.revenueGrowthMom * 100).toFixed(1)}%` : 'N/A'} · Runway: ${m?.runway != null ? `${Math.floor(m.runway)}mo` : 'N/A'} · Burn: ${m?.burnRate ? fmt(m.burnRate) : 'N/A'}`
+        const history = (c.metricsHistory ?? []).slice(1, 4)
+        const mrrTrend = history.length >= 2
+          ? ` [trend: ${history.map((h) => h.mrr ? fmt(h.mrr) : 'N/A').join(' → ')}]`
+          : ''
+        const runwayTrend = history.length >= 2
+          ? ` [runway trend: ${history.map((h) => h.runway != null ? `${Math.floor(h.runway)}mo` : 'N/A').join(' → ')}]`
+          : ''
+        return `- [${c.name}] ${c.sector}/${c.stage} · Health: ${c.healthStatus} (${c.healthScore}) · MRR: ${m?.mrr ? fmt(m.mrr) : 'N/A'}${mrrTrend} · Growth: ${m?.revenueGrowthMom != null ? `${(m.revenueGrowthMom * 100).toFixed(1)}%` : 'N/A'} · Runway: ${m?.runway != null ? `${Math.floor(m.runway)}mo` : 'N/A'}${runwayTrend} · Burn: ${m?.burnRate ? fmt(m.burnRate) : 'N/A'}`
       })
       .join('\n') + (context.companies.length > MAX_COMPANIES_IN_PROMPT ? `\n(Showing ${MAX_COMPANIES_IN_PROMPT} of ${context.companies.length} companies)` : '')
 
@@ -179,6 +302,10 @@ export class PortfolioQAAgent {
           .join('\n')
       : 'No high-severity open risks.'
 
+    const searchNote = webSearchEnabled
+      ? '\n\nNote: You have web search available. Use search_web for questions about latest news, recent events, or external company information.'
+      : ''
+
     const userMessage = `Portfolio data as of ${context.asOf}:
 
 ## Fund Metrics
@@ -195,13 +322,13 @@ ${trendsBlock}
 
 ## Active High/Critical Risks
 ${risksBlock}
-
+${searchNote}
 ---
 
 Question: ${question}`
 
     return [
-      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: webSearchEnabled ? SYSTEM_PROMPT : SYSTEM_PROMPT_NO_SEARCH },
       { role: 'user', content: userMessage },
     ]
   }
@@ -212,7 +339,6 @@ Question: ${question}`
 
     const runwayMatch = q.match(/runway\s+(?:under|below|less than|<)\s*(\d+)/)
     if (runwayMatch) {
-      // Default 12 months if capture group is unexpectedly absent (shouldn't happen given the regex)
       const threshold = runwayMatch[1] !== undefined ? parseInt(runwayMatch[1], 10) : 12
       const matches = context.companies.filter(
         (c) => c.latestMetrics?.runway != null && c.latestMetrics.runway < threshold
@@ -220,7 +346,13 @@ Question: ${question}`
       if (matches.length === 0) return `No companies have runway under ${threshold} months.`
       const rows = matches
         .sort((a, b) => (a.latestMetrics?.runway ?? 0) - (b.latestMetrics?.runway ?? 0))
-        .map((c) => `- **${c.name}** — ${Math.floor(c.latestMetrics?.runway ?? 0)} months (${c.healthStatus})`)
+        .map((c) => {
+          const history = (c.metricsHistory ?? []).slice(1, 3)
+          const runwayTrend = history.length >= 2
+            ? ` (was ${history.map((h) => h.runway != null ? `${Math.floor(h.runway)}mo` : 'N/A').join(' → ')})`
+            : ''
+          return `- **${c.name}** — ${Math.floor(c.latestMetrics?.runway ?? 0)} months${runwayTrend} (${c.healthStatus})`
+        })
         .join('\n')
       return `## ${matches.length} Companies with Runway Under ${threshold} Months\n\n${rows}`
     }

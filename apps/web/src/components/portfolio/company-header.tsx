@@ -19,11 +19,11 @@ function MetricPill({
   deltaDirection?: 'up' | 'down' | 'flat'
 }) {
   return (
-    <div className="flex flex-col gap-0.5 min-w-0">
-      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+    <div className="flex flex-col gap-0.5 flex-shrink-0">
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 whitespace-nowrap">
         {label}
       </p>
-      <p className="text-base font-semibold tabular-nums text-foreground">{value}</p>
+      <p className="text-base font-semibold tabular-nums text-foreground whitespace-nowrap">{value}</p>
       {delta && (
         <p
           className={cn(

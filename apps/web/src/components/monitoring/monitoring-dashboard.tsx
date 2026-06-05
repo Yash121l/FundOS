@@ -104,7 +104,7 @@ export function MonitoringDashboardView({ data }: Props) {
       </div>
 
       {/* Summary stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
         {[
           {
             label: 'MORs Submitted', value: `${submittedCount}/${totalCompanies}`,

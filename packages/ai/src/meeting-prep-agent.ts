@@ -108,23 +108,21 @@ Write a JSON object with these exact string fields:
         output: output.slice(0, 300),
       })
 
-      const raw = JSON.parse(output) as Partial<{
-        healthTrajectory: string
-        openRisksSection: string
-        pendingActionsSection: string
-        discussionTopics: string[]
-        questionsToAsk: string[]
-      }>
+      const raw = JSON.parse(output) as Record<string, unknown>
+
+      // Guard: AI may return arrays instead of strings for prose fields
+      const ensureStr = (val: unknown, fb: string): string =>
+        typeof val === 'string' ? val : Array.isArray(val) ? val.join('\n') : fb
 
       const fallback = this.generateRuleBased(input)
       return {
         companyName: company.name,
         generatedAt: new Date(),
-        healthTrajectory: raw.healthTrajectory ?? fallback.healthTrajectory,
-        openRisksSection: raw.openRisksSection ?? fallback.openRisksSection,
-        pendingActionsSection: raw.pendingActionsSection ?? fallback.pendingActionsSection,
-        discussionTopics: Array.isArray(raw.discussionTopics) ? raw.discussionTopics : fallback.discussionTopics,
-        questionsToAsk: Array.isArray(raw.questionsToAsk) ? raw.questionsToAsk : fallback.questionsToAsk,
+        healthTrajectory: ensureStr(raw['healthTrajectory'], fallback.healthTrajectory),
+        openRisksSection: ensureStr(raw['openRisksSection'], fallback.openRisksSection),
+        pendingActionsSection: ensureStr(raw['pendingActionsSection'], fallback.pendingActionsSection),
+        discussionTopics: Array.isArray(raw['discussionTopics']) ? (raw['discussionTopics'] as string[]) : fallback.discussionTopics,
+        questionsToAsk: Array.isArray(raw['questionsToAsk']) ? (raw['questionsToAsk'] as string[]) : fallback.questionsToAsk,
       }
     } catch (err) {
       console.error('[AI] meeting-prep AI generation failed, falling back to rule-based', {

@@ -1,4 +1,6 @@
 export { PortfolioAnalyst } from './portfolio-analyst'
+export { MorAnalyzer } from './mor-analyzer'
+export type { MorInput, MorAnalysisOutput, EscalationFlag } from './mor-analyzer'
 export { LPReportingAgent } from './lp-reporting-agent'
 export { TrendDetectionAgent } from './trend-detection-agent'
 export { MarketIntelligenceAgent } from './market-intelligence-agent'

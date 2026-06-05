@@ -159,28 +159,54 @@ enum SignalCategory {
 // ==================
 
 model User {
-  id          String   @id @default(cuid())
-  clerkId     String   @unique
-  email       String   @unique
-  name        String
-  role        UserRole @default(ANALYST)
-  avatarUrl   String?
-  companyId   String?  // set for FOUNDER role: their portfolio company
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  passwordHash  String?
+  role          UserRole  @default(ANALYST)
+  avatarUrl     String?
+  companyId     String?   // set for FOUNDER role: their portfolio company
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   tasks     Task[]
+  sessions  Session[]
   auditLogs AuditLog[]
-  submittedUpdates  FounderUpdate[]         @relation("SubmittedUpdates")
-  reviewedUpdates   FounderUpdate[]         @relation("ReviewedUpdates")
-  createdTasks      Task[]                  @relation("CreatedTasks")
-  generatedReports  LPReport[]              @relation("GeneratedReports")
-  lpReportAccess    LPReportAccess[]
-  newsSubmissions   FounderNewsSubmission[] @relation("NewsSubmissions")
-  company           Company?                @relation("FounderUsers", fields: [companyId], references: [id], onDelete: SetNull)
+  submittedUpdates    FounderUpdate[]         @relation("SubmittedUpdates")
+  reviewedUpdates     FounderUpdate[]         @relation("ReviewedUpdates")
+  createdTasks        Task[]                  @relation("CreatedTasks")
+  generatedReports    LPReport[]              @relation("GeneratedReports")
+  lpReportAccess      LPReportAccess[]
+  newsSubmissions     FounderNewsSubmission[] @relation("NewsSubmissions")
+  morSubmissions      MonthlyOperationsReport[] @relation("MorSubmissions")
+  morReviews          MonthlyOperationsReport[] @relation("MorReviews")
+  weeklyKpiPings      WeeklyKpiPing[]           @relation("WeeklyKpiSubmissions")
+  followOnNotes       FollowOnNote[]          @relation("FollowOnNotes")
+  valueAddActivities  ValueAddActivity[]      @relation("ValueAddActivities")
+  valuationApprovals  AnnualValuation[]       @relation("ValuationApprovals")
+  lpEntity            LPEntity?               @relation("LPEntityUser")
+  company             Company?                @relation("FounderUsers", fields: [companyId], references: [id], onDelete: SetNull)
 
   @@index([companyId])
   @@map("users")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  userAgent String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("sessions")
 }
 
 model Company {
@@ -212,6 +238,26 @@ model Company {
   reportInclusions ReportCompany[]
   founders         User[]                  @relation("FounderUsers")
   newsSubmissions  FounderNewsSubmission[]
+  mrrBridges       MrrBridge[]
+  unitEconomics    UnitEconomics[]
+  incomeStatements IncomeStatement[]
+  incomeBudgets    IncomeStatementBudget[]
+  balanceSheets    BalanceSheet[]
+  cashFlows        CashFlowStatement[]
+  fundingRounds    FundingRound[]
+  investments      FundInvestment[]
+  valuationMarks   ValuationMark[]
+  capTableEntries  CapTableEntry[]
+  safeNotes        SafeNote[]
+  convertibleNotes ConvertibleNote[]
+  optionPools      OptionPool[]
+  morReports       MonthlyOperationsReport[]
+  morEscalations   MorEscalation[]
+  weeklyKpiPings   WeeklyKpiPing[]
+  boardMeetings    BoardMeeting[]
+  followOnNotes    FollowOnNote[]
+  valueAddActivities ValueAddActivity[]
+  annualValuations AnnualValuation[]
 
   @@index([sector])
   @@index([healthStatus])
@@ -231,6 +277,8 @@ model MetricSnapshot {
   revenueGrowthYoy Float?
   grossMargin      Float?
   nrr              Float?
+  grr              Float?
+  logoChurnAnnual  Float?
   burnRate         Float?
   cashBalance      Float?
   runway           Float?
@@ -560,4 +608,1118 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+// ==================
+// FINANCIAL MODULES
+// ==================
+
+// -- Enums --
+
+enum RoundType {
+  SAFE
+  CONVERTIBLE_NOTE
+  PRICED_EQUITY
+  GRANT
+  DEBT
+}
+
+enum SecurityType {
+  SAFE
+  CONVERTIBLE_NOTE
+  PREFERRED
+  COMMON
+  WARRANT
+}
+
+enum ValuationMethod {
+  LAST_ROUND
+  ARR_MULTIPLE
+  DCF
+  PWERM
+  OPM
+  NET_ASSETS
+}
+
+enum MarkStatus {
+  DRAFT
+  REVIEWED
+  APPROVED
+}
+
+enum SafeType {
+  PRE_MONEY
+  POST_MONEY
+}
+
+enum NoteStatus {
+  OUTSTANDING
+  CONVERTED
+  REPAID
+  DEFAULTED
+}
+
+enum HolderType {
+  FOUNDER
+  INVESTOR
+  EMPLOYEE
+  OPTION_POOL
+  WARRANT
+}
+
+enum AntiDilution {
+  NONE
+  WEIGHTED_AVERAGE_BROAD
+  WEIGHTED_AVERAGE_NARROW
+  FULL_RATCHET
+}
+
+enum CapitalActivityType {
+  CAPITAL_CALL
+  DISTRIBUTION
+  MANAGEMENT_FEE
+  FUND_EXPENSE
+  CARRIED_INTEREST
+}
+
+// ==================
+// PORTFOLIO MONITORING ENUMS
+// ==================
+
+enum MorStatus {
+  PENDING      // not yet due
+  DUE          // due today
+  SUBMITTED    // submitted on time
+  LATE         // past due, not submitted
+  REVIEWED     // PM reviewed
+  ESCALATED    // anomaly detected, escalated
+}
+
+enum EscalationType {
+  BURN_EXCESS             // burn > 20% above plan 2+ months
+  REVENUE_MISS            // revenue miss 2+ consecutive months
+  LOW_RUNWAY              // runway < 6 months
+  TEAM_EVENT              // key co-founder departure / conflict
+  LEGAL                   // legal or regulatory action
+  DOWN_ROUND              // down round signal
+  CUSTOMER_CONCENTRATION  // single customer > 35% revenue
+  LATE_SUBMISSION         // MIS submission missed / late
+  OTHER
+}
+
+enum EscalationStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  DISMISSED
+}
+
+enum BoardMeetingType {
+  QUARTERLY
+  SPECIAL
+  ANNUAL
+  LPAC    // LP Advisory Committee
+}
+
+enum BoardMeetingStatus {
+  SCHEDULED
+  HELD
+  CANCELLED
+}
+
+enum ResolutionOutcome {
+  APPROVED
+  REJECTED
+  TABLED
+  NOTED
+}
+
+enum FollowOnRecommendation {
+  FOLLOW_ON
+  PASS
+  BRIDGE
+  WATCH
+}
+
+enum FollowOnStatus {
+  DRAFT
+  IC_SUBMITTED
+  APPROVED
+  DECLINED
+}
+
+enum ValueAddType {
+  TALENT_INTRO
+  CUSTOMER_BD
+  PR_FACILITATION
+  FUNDRAISE_COACHING
+  CO_INVESTOR_INTRO
+  REGULATORY_GUIDANCE
+  OTHER
+}
+
+enum ValueAddStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+}
+
+// ==================
+// LP MANAGEMENT ENUMS
+// ==================
+
+enum KYCStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum FATFStatus {
+  CLEAR
+  GREYLIST
+  BLACKLIST
+}
+
+enum EntityType {
+  INDIVIDUAL
+  FAMILY_OFFICE
+  INSTITUTIONAL
+  FUND_OF_FUNDS
+  SOVEREIGN_WEALTH
+  ENDOWMENT
+  CORPORATE
+  OTHER
+}
+
+enum CapitalCallStatus {
+  DRAFT
+  ISSUED
+  PARTIALLY_PAID
+  FULLY_PAID
+  OVERDUE
+}
+
+enum AllocationStatus {
+  PENDING
+  PAID
+  OVERDUE
+  WAIVED
+}
+
+enum DistributionType {
+  RETURN_OF_CAPITAL
+  PREFERRED_RETURN
+  CARRIED_INTEREST
+  RESIDUAL
+}
+
+enum LPACMeetingType {
+  CONFLICT_REVIEW
+  VALUATION_APPROVAL
+  MATERIAL_DECISION
+  ROUTINE
+  ANNUAL
+}
+
+enum LPACMeetingStatus {
+  SCHEDULED
+  HELD
+  CANCELLED
+}
+
+enum LPACResolutionType {
+  CONFLICT_WAIVER
+  VALUATION_SIGN_OFF
+  FOLLOW_ON_CONSENT
+  FUND_EXTENSION
+  OTHER
+}
+
+enum WaterfallType {
+  AMERICAN
+  EUROPEAN
+}
+
+// -- Module C: SaaS Metrics & Unit Economics --
+
+model MrrBridge {
+  id                 String   @id @default(cuid())
+  companyId          String
+  period             String
+  beginningMrr       Float
+  newMrr             Float    @default(0)
+  expansionMrr       Float    @default(0)
+  reactivationMrr    Float    @default(0)
+  contractionMrr     Float    @default(0)
+  churnedMrr         Float    @default(0)
+  endingMrr          Float
+  newCustomers       Int?
+  churnedCustomers   Int?
+  totalCustomers     Int?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, period])
+  @@index([companyId])
+  @@map("mrr_bridges")
+}
+
+model UnitEconomics {
+  id                   String   @id @default(cuid())
+  companyId            String
+  period               String
+  cac                  Float?
+  ltv                  Float?
+  ltvCacRatio          Float?
+  cacPaybackMonths     Float?
+  arpa                 Float?
+  acv                  Float?
+  asp                  Float?
+  newCacRatio          Float?
+  expansionCacRatio    Float?
+  burnMultiple         Float?
+  ruleOf40             Float?
+  magicNumber          Float?
+  bessemerEfficiency   Float?
+  cashConversionScore  Float?
+  smSpend              Float?
+  newCustomers         Int?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, period])
+  @@index([companyId])
+  @@map("unit_economics")
+}
+
+// -- Module B: Financial Statements --
+
+model IncomeStatement {
+  id                   String   @id @default(cuid())
+  companyId            String
+  period               String
+  subscriptionRevenue  Float?
+  servicesRevenue      Float?
+  otherRevenue         Float?
+  cogsHosting          Float?
+  cogsSupport          Float?
+  cogsServices         Float?
+  cogsOther            Float?
+  smSalaries           Float?
+  smPrograms           Float?
+  rdSalaries           Float?
+  rdContractors        Float?
+  rdTools              Float?
+  gaSalaries           Float?
+  gaLegal              Float?
+  gaInsurance          Float?
+  gaOther              Float?
+  depreciation         Float?
+  interestExpense      Float?
+  interestIncome       Float?
+  stockBasedComp       Float?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, period])
+  @@index([companyId])
+  @@map("income_statements")
+}
+
+model IncomeStatementBudget {
+  id                   String   @id @default(cuid())
+  companyId            String
+  year                 Int
+  subscriptionRevenue  Float?
+  servicesRevenue      Float?
+  otherRevenue         Float?
+  cogsHosting          Float?
+  cogsSupport          Float?
+  cogsServices         Float?
+  cogsOther            Float?
+  smSalaries           Float?
+  smPrograms           Float?
+  rdSalaries           Float?
+  rdContractors        Float?
+  rdTools              Float?
+  gaSalaries           Float?
+  gaLegal              Float?
+  gaInsurance          Float?
+  gaOther              Float?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, year])
+  @@index([companyId])
+  @@map("income_statement_budgets")
+}
+
+model BalanceSheet {
+  id                         String   @id @default(cuid())
+  companyId                  String
+  period                     String
+  cash                       Float?
+  shortTermInvestments       Float?
+  accountsReceivable         Float?
+  prepaidExpenses            Float?
+  otherCurrentAssets         Float?
+  ppe                        Float?
+  capitalizedSoftware        Float?
+  rightOfUseAssets           Float?
+  goodwill                   Float?
+  otherNonCurrentAssets      Float?
+  accountsPayable            Float?
+  accruedLiabilities         Float?
+  deferredRevenueCurrent     Float?
+  shortTermDebt              Float?
+  otherCurrentLiabilities    Float?
+  longTermDebt               Float?
+  deferredRevenueLongTerm    Float?
+  operatingLeaseLiabilities  Float?
+  commonStock                Float?
+  additionalPaidInCapital    Float?
+  accumulatedDeficit         Float?
+  retainedEarnings           Float?
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, period])
+  @@index([companyId])
+  @@map("balance_sheets")
+}
+
+model CashFlowStatement {
+  id                         String   @id @default(cuid())
+  companyId                  String
+  period                     String
+  cfDepreciation             Float?
+  cfStockBasedComp           Float?
+  cfArChange                 Float?
+  cfDeferredRevenueChange    Float?
+  cfApChange                 Float?
+  cfAccruedLiabilitiesChange Float?
+  cfPrepaidChange            Float?
+  cfCapex                    Float?
+  cfCapitalizedSoftware      Float?
+  cfAcquisitions             Float?
+  cfEquityProceeds           Float?
+  cfDebtProceeds             Float?
+  cfDebtRepayment            Float?
+  cfOptionExercises          Float?
+  beginningCash              Float?
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, period])
+  @@index([companyId])
+  @@map("cash_flow_statements")
+}
+
+// -- Module D: Investment Tracking --
+
+model FundingRound {
+  id             String    @id @default(cuid())
+  companyId      String
+  roundName      String
+  roundType      RoundType
+  closeDate      DateTime
+  preMoney       Float?
+  postMoney      Float?
+  roundSize      Float?
+  pricePerShare  Float?
+  shareClass     String?
+  optionPoolPct  Float?
+  leadInvestor   String?
+  notes          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  company     Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  investments FundInvestment[]
+  capTable    CapTableEntry[]
+  safeNotes   SafeNote[]       @relation("ConversionRound")
+  notes_rel   ConvertibleNote[] @relation("NoteConversionRound")
+
+  @@index([companyId])
+  @@map("funding_rounds")
+}
+
+model FundInvestment {
+  id                     String       @id @default(cuid())
+  roundId                String?
+  companyId              String
+  investmentDate         DateTime
+  securityType           SecurityType
+  amountInvested         Float
+  sharesAcquired         Float?
+  entryPricePerShare     Float?
+  ownershipPctBasic      Float?
+  ownershipPctFullyDiluted Float?
+  proRataRight           Boolean      @default(false)
+  boardSeat              Boolean      @default(false)
+  boardObserver          Boolean      @default(false)
+  followOnReserve        Float?
+  notes                  String?
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
+
+  company        Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  round          FundingRound?  @relation(fields: [roundId], references: [id], onDelete: SetNull)
+  valuationMarks ValuationMark[]
+
+  @@index([companyId])
+  @@index([roundId])
+  @@map("fund_investments")
+}
+
+model ValuationMark {
+  id                 String          @id @default(cuid())
+  investmentId       String
+  companyId          String
+  markDate           DateTime
+  fairValue          Float
+  valuationMethod    ValuationMethod
+  methodologyNote    String?
+  revenueMultipleUsed Float?
+  comparableSet      String?
+  impliedValuation   Float?
+  status             MarkStatus      @default(DRAFT)
+  approvedBy         String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  investment FundInvestment @relation(fields: [investmentId], references: [id], onDelete: Cascade)
+  company    Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([investmentId])
+  @@index([companyId])
+  @@index([markDate])
+  @@map("valuation_marks")
+}
+
+// -- Module E: Cap Table --
+
+model CapTableEntry {
+  id                    String       @id @default(cuid())
+  companyId             String
+  roundId               String?
+  holderName            String
+  holderType            HolderType
+  shareClass            String
+  sharesIssued          Float
+  ownershipPctBasic     Float?
+  ownershipPctFullyDiluted Float?
+  liquidationPreference Float?
+  participating         Boolean      @default(false)
+  antiDilution          AntiDilution @default(NONE)
+  votingRightsPerShare  Float        @default(1)
+  boardSeat             Boolean      @default(false)
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  company Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  round   FundingRound? @relation(fields: [roundId], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([roundId])
+  @@map("cap_table_entries")
+}
+
+model SafeNote {
+  id                  String     @id @default(cuid())
+  companyId           String
+  investorName        String
+  amount              Float
+  issueDate           DateTime
+  safeType            SafeType   @default(POST_MONEY)
+  valuationCap        Float?
+  discountRate        Float?
+  mfn                 Boolean    @default(false)
+  proRataRight        Boolean    @default(false)
+  triggerAmount       Float?
+  status              NoteStatus @default(OUTSTANDING)
+  conversionRoundId   String?
+  sharesIssuedOnConversion Float?
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  company          Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  conversionRound  FundingRound? @relation("ConversionRound", fields: [conversionRoundId], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([conversionRoundId])
+  @@map("safe_notes")
+}
+
+model ConvertibleNote {
+  id                String     @id @default(cuid())
+  companyId         String
+  investorName      String
+  principal         Float
+  issueDate         DateTime
+  maturityDate      DateTime?
+  interestRate      Float?
+  interestType      String?
+  valuationCap      Float?
+  discountRate      Float?
+  mfn               Boolean    @default(false)
+  status            NoteStatus @default(OUTSTANDING)
+  conversionRoundId String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  company         Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  conversionRound FundingRound? @relation("NoteConversionRound", fields: [conversionRoundId], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([conversionRoundId])
+  @@map("convertible_notes")
+}
+
+model OptionPool {
+  id                String   @id @default(cuid())
+  companyId         String
+  roundId           String?
+  authorizedShares  Float
+  grantedShares     Float    @default(0)
+  vestedShares      Float    @default(0)
+  exercisedShares   Float    @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([roundId])
+  @@map("option_pools")
+}
+
+// -- Module F: Fund Performance --
+
+model FundProfile {
+  id                  String        @id @default(cuid())
+  name                String
+  vintage             Int
+  committedCapital    Float
+  managementFeePct    Float         @default(0.02)
+  carryPct            Float         @default(0.20)
+  hurdleRate          Float         @default(0.08)
+  waterfallType       WaterfallType @default(EUROPEAN)
+  investmentPeriodEnd DateTime?
+  fundTermEnd         DateTime?
+  currency            String        @default("USD")
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  capitalActivities CapitalActivity[]
+  capitalCalls      CapitalCall[]
+  distributions     Distribution[]
+  lpacMeetings      LPACMeeting[]
+
+  @@map("fund_profiles")
+}
+
+model CapitalActivity {
+  id          String              @id @default(cuid())
+  fundId      String
+  date        DateTime
+  type        CapitalActivityType
+  amount      Float
+  description String?
+  lpName      String?
+  createdAt   DateTime            @default(now())
+
+  fund FundProfile @relation(fields: [fundId], references: [id], onDelete: Cascade)
+
+  @@index([fundId])
+  @@index([date])
+  @@index([type])
+  @@map("capital_activities")
+}
+
+// ==================
+// PORTFOLIO MONITORING MODELS
+// ==================
+
+model MonthlyOperationsReport {
+  id          String    @id @default(cuid())
+  companyId   String
+  period      String    // "YYYY-MM"
+  dueDate     DateTime
+  submittedAt DateTime?
+  submittedById String?
+  reviewedAt  DateTime?
+  reviewedById String?
+  status      MorStatus @default(PENDING)
+
+  // P&L actuals (month)
+  revenueSubscription    Float?
+  revenueServices        Float?
+  revenueOther           Float?
+  cogs                   Float?
+  grossProfit            Float?
+  grossMarginPct         Float?
+  smExpenses             Float?
+  rdExpenses             Float?
+  gaExpenses             Float?
+  ebitda                 Float?
+
+  // P&L vs budget
+  budgetRevenue          Float?
+  budgetEbitda           Float?
+  revenueVsBudgetPct     Float?  // (actual - budget) / budget
+  ebitdaVsBudgetPct      Float?
+
+  // YTD
+  ytdRevenue             Float?
+  ytdEbitda              Float?
+  ytdBudgetRevenue       Float?
+  ytdBudgetEbitda        Float?
+
+  // Cash & burn
+  burnRate               Float?
+  cashBalance            Float?
+  bankBalance            Float?
+  runway                 Float?  // months
+
+  // Headcount
+  headcount              Int?
+  attrition              Int?    // departures this month
+  openRoles              Int?
+
+  // KPIs (5 configurable metrics)
+  kpi1Label              String?
+  kpi1Actual             Float?
+  kpi1Target             Float?
+  kpi2Label              String?
+  kpi2Actual             Float?
+  kpi2Target             Float?
+  kpi3Label              String?
+  kpi3Actual             Float?
+  kpi3Target             Float?
+  kpi4Label              String?
+  kpi4Actual             Float?
+  kpi4Target             Float?
+  kpi5Label              String?
+  kpi5Actual             Float?
+  kpi5Target             Float?
+
+  // Qualitative (MOR template fields)
+  wins                   String?
+  misses                 String?
+  pivots                 String?
+  nextMonthPriorities    String?
+  okrs                   String?
+  founderNotes           String?
+
+  // Document attachments (Google Drive / Dropbox link to PDF + Excel)
+  attachmentUrl          String?
+  attachmentLabel        String?
+
+  // AI analysis
+  aiSummary              String?
+  aiFlags                String?   // JSON array of detected issues
+  aiProcessedAt          DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company      Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  submittedBy  User?        @relation("MorSubmissions", fields: [submittedById], references: [id], onDelete: SetNull)
+  reviewedBy   User?        @relation("MorReviews", fields: [reviewedById], references: [id], onDelete: SetNull)
+  escalations  MorEscalation[]
+
+  @@unique([companyId, period])
+  @@index([companyId])
+  @@index([period])
+  @@index([status])
+  @@index([dueDate])
+  @@index([submittedById])
+  @@index([reviewedById])
+  @@map("monthly_operations_reports")
+}
+
+model MorEscalation {
+  id          String           @id @default(cuid())
+  companyId   String
+  morId       String?          // linked MOR if triggered by one
+  type        EscalationType
+  severity    Severity
+  title       String
+  details     String           // what was detected / threshold breached
+  status      EscalationStatus @default(OPEN)
+  escalatedToIC Boolean        @default(false)
+  escalatedAt DateTime?
+  resolvedAt  DateTime?
+  resolvedBy  String?
+  responseNote String?
+  detectedAt  DateTime         @default(now())
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  company Company                   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  mor     MonthlyOperationsReport?  @relation(fields: [morId], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([morId])
+  @@index([status])
+  @@index([severity])
+  @@index([type])
+  @@map("mor_escalations")
+}
+
+model WeeklyKpiPing {
+  id            String   @id @default(cuid())
+  companyId     String
+  week          String   // ISO week: "2026-W23"
+  submittedAt   DateTime @default(now())
+  submittedById String?
+
+  kpi1Label  String?
+  kpi1Value  Float?
+  kpi2Label  String?
+  kpi2Value  Float?
+  kpi3Label  String?
+  kpi3Value  Float?
+  kpi4Label  String?
+  kpi4Value  Float?
+  kpi5Label  String?
+  kpi5Value  Float?
+
+  founderNote String?
+
+  company     Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  submittedBy User?   @relation("WeeklyKpiSubmissions", fields: [submittedById], references: [id], onDelete: SetNull)
+
+  @@unique([companyId, week])
+  @@index([companyId])
+  @@index([week])
+  @@map("weekly_kpi_pings")
+}
+
+model BoardMeeting {
+  id          String             @id @default(cuid())
+  companyId   String
+  type        BoardMeetingType   @default(QUARTERLY)
+  status      BoardMeetingStatus @default(SCHEDULED)
+  meetingDate DateTime
+  agenda      String?
+  attendees   Json?              // array of names
+  location    String?            // "In Person / Zoom / Hybrid"
+  minutesContent String?         // full markdown minutes
+  nextQuarterPlan String?        // locked Q plan
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  company     Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  resolutions BoardResolution[]
+
+  @@index([companyId])
+  @@index([meetingDate])
+  @@index([status])
+  @@map("board_meetings")
+}
+
+model BoardResolution {
+  id          String            @id @default(cuid())
+  meetingId   String
+  title       String
+  description String?
+  proposedBy  String?
+  outcome     ResolutionOutcome @default(APPROVED)
+  votesFor    Int               @default(0)
+  votesAgainst Int              @default(0)
+  votesAbstain Int              @default(0)
+  notes       String?
+  createdAt   DateTime          @default(now())
+
+  meeting BoardMeeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  @@index([meetingId])
+  @@map("board_resolutions")
+}
+
+model FollowOnNote {
+  id              String                 @id @default(cuid())
+  companyId       String
+  period          String                 // "YYYY-QN" e.g. "2026-Q1"
+  recommendation  FollowOnRecommendation @default(WATCH)
+  amount          Float?                 // proposed follow-on amount
+  rationale       String
+  keyMetrics      Json?                  // snapshot of metrics at time of note
+  status          FollowOnStatus         @default(DRAFT)
+  preparedById    String?
+  submittedToICAt DateTime?
+  resolvedAt      DateTime?
+  icNotes         String?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  company     Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  preparedBy  User?   @relation("FollowOnNotes", fields: [preparedById], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([status])
+  @@map("follow_on_notes")
+}
+
+model ValueAddActivity {
+  id          String         @id @default(cuid())
+  companyId   String
+  type        ValueAddType
+  status      ValueAddStatus @default(PLANNED)
+  title       String
+  description String?
+  outcome     String?
+  activityDate DateTime?
+  createdById String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdBy User?   @relation("ValueAddActivities", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([type])
+  @@index([status])
+  @@map("value_add_activities")
+}
+
+model AnnualValuation {
+  id                 String          @id @default(cuid())
+  companyId          String
+  year               Int
+  fairValue          Float
+  previousFairValue  Float?
+  changePercent      Float?
+  method             ValuationMethod
+  revenueMultiple    Float?
+  comparableSet      String?
+  methodologyNote    String?
+  impliedValuation   Float?
+  navImpact          Float?          // change in NAV contribution
+  status             MarkStatus      @default(DRAFT)
+  approvedById       String?
+  approvedAt         DateTime?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  company    Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  approvedBy User?   @relation("ValuationApprovals", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  @@unique([companyId, year])
+  @@index([companyId])
+  @@index([year])
+  @@map("annual_valuations")
+}
+
+// ==================
+// LP MANAGEMENT MODELS
+// ==================
+
+model LPEntity {
+  id                    String     @id @default(cuid())
+  name                  String
+  entityType            EntityType @default(INDIVIDUAL)
+  jurisdiction          String?    // country / state
+  contactName           String?
+  contactEmail          String?
+  contactPhone          String?
+
+  // KYC / AML / FATF
+  kycStatus             KYCStatus  @default(NOT_STARTED)
+  kycCompletedAt        DateTime?
+  kycExpiresAt          DateTime?
+  fatfStatus            FATFStatus @default(CLEAR)
+  amlClearanceDate      DateTime?
+  pepCheck              Boolean    @default(false)  // Politically Exposed Person
+  sanctionsCheck        Boolean    @default(false)
+
+  // LP Agreement
+  agreementSignedAt     DateTime?
+  agreementVersion      String?
+
+  // Capital commitment
+  capitalCommitment     Float      @default(0)
+  capitalCalled         Float      @default(0)   // total called to date
+  capitalDistributed    Float      @default(0)   // total returned to date
+  unfundedCommitment    Float      @default(0)   // commitment - called
+
+  // Portal
+  portalAccessGrantedAt DateTime?
+  linkedUserId          String?    @unique       // User with LP role
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  linkedUser    User?                     @relation("LPEntityUser", fields: [linkedUserId], references: [id], onDelete: SetNull)
+  callAllocations  CapitalCallAllocation[]
+  distAllocations  DistributionAllocation[]
+  lpacMemberships  LPACMembership[]
+
+  @@index([kycStatus])
+  @@index([fatfStatus])
+  @@map("lp_entities")
+}
+
+model CapitalCall {
+  id              String            @id @default(cuid())
+  fundId          String
+  callNumber      Int
+  callDate        DateTime
+  dueDate         DateTime          // callDate + 10-15 business days
+  totalAmount     Float
+  purpose         String
+  status          CapitalCallStatus @default(DRAFT)
+  wireInstructions String?          // markdown
+  notes           String?
+  issuedAt        DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  fund        FundProfile             @relation(fields: [fundId], references: [id], onDelete: Cascade)
+  allocations CapitalCallAllocation[]
+
+  @@index([fundId])
+  @@index([callDate])
+  @@index([status])
+  @@map("capital_calls")
+}
+
+model CapitalCallAllocation {
+  id           String           @id @default(cuid())
+  callId       String
+  lpEntityId   String
+  proRataShare Float            // 0.0–1.0
+  amountDue    Float
+  amountPaid   Float            @default(0)
+  paidAt       DateTime?
+  status       AllocationStatus @default(PENDING)
+  notes        String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  call     CapitalCall @relation(fields: [callId], references: [id], onDelete: Cascade)
+  lpEntity LPEntity    @relation(fields: [lpEntityId], references: [id], onDelete: Cascade)
+
+  @@unique([callId, lpEntityId])
+  @@index([callId])
+  @@index([lpEntityId])
+  @@index([status])
+  @@map("capital_call_allocations")
+}
+
+model Distribution {
+  id               String           @id @default(cuid())
+  fundId           String
+  distributionDate DateTime
+  totalAmount      Float
+  type             DistributionType
+  description      String?
+  relatedCompanyId String?          // if from a specific exit
+  waterfallJson    String?          // JSON breakdown of waterfall
+  taxDocStatus     String?          // "PENDING" | "ISSUED" | "FILED"
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  fund            FundProfile              @relation(fields: [fundId], references: [id], onDelete: Cascade)
+  allocations     DistributionAllocation[]
+
+  @@index([fundId])
+  @@index([distributionDate])
+  @@index([type])
+  @@index([relatedCompanyId])
+  @@map("distributions")
+}
+
+model DistributionAllocation {
+  id              String   @id @default(cuid())
+  distributionId  String
+  lpEntityId      String
+  proRataShare    Float
+  grossAmount     Float
+  returnOfCapital Float    @default(0)
+  preferredReturn Float    @default(0)
+  carry           Float    @default(0)
+  netAmount       Float
+  taxWithheld     Float    @default(0)
+  paidAt          DateTime?
+  createdAt       DateTime @default(now())
+
+  distribution Distribution @relation(fields: [distributionId], references: [id], onDelete: Cascade)
+  lpEntity     LPEntity     @relation(fields: [lpEntityId], references: [id], onDelete: Cascade)
+
+  @@unique([distributionId, lpEntityId])
+  @@index([distributionId])
+  @@index([lpEntityId])
+  @@map("distribution_allocations")
+}
+
+model LPACMeeting {
+  id           String            @id @default(cuid())
+  fundId       String
+  type         LPACMeetingType
+  status       LPACMeetingStatus @default(SCHEDULED)
+  meetingDate  DateTime
+  agenda       String?
+  quorumMet    Boolean           @default(false)
+  minutesContent String?
+  location     String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  fund        FundProfile      @relation(fields: [fundId], references: [id], onDelete: Cascade)
+  resolutions LPACResolution[]
+  members     LPACMembership[]
+
+  @@index([fundId])
+  @@index([meetingDate])
+  @@index([status])
+  @@map("lpac_meetings")
+}
+
+model LPACMembership {
+  id          String   @id @default(cuid())
+  meetingId   String
+  lpEntityId  String
+  attended    Boolean  @default(false)
+  proxy       String?  // if attended by proxy, their name
+
+  meeting  LPACMeeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  lpEntity LPEntity    @relation(fields: [lpEntityId], references: [id], onDelete: Cascade)
+
+  @@unique([meetingId, lpEntityId])
+  @@map("lpac_memberships")
+}
+
+model LPACResolution {
+  id          String             @id @default(cuid())
+  meetingId   String
+  type        LPACResolutionType @default(OTHER)
+  title       String
+  description String?
+  outcome     ResolutionOutcome  @default(APPROVED)
+  votesFor    Int                @default(0)
+  votesAgainst Int               @default(0)
+  notes       String?
+  createdAt   DateTime           @default(now())
+
+  meeting LPACMeeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  @@index([meetingId])
+  @@map("lpac_resolutions")
 }

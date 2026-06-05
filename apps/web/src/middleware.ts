@@ -10,8 +10,6 @@ function isPublic(pathname: string) {
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
-  const requestHeaders = new Headers(request.headers)
-  requestHeaders.set('x-signalos-pathname', pathname)
 
   // Always allow static assets and Next.js internals
   if (
@@ -35,6 +33,8 @@ export function middleware(request: NextRequest) {
 
   // Token exists — let the server component validate it against the DB.
   // Edge middleware cannot query Postgres, so we only do the cookie presence check here.
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set('x-signalos-pathname', pathname)
   return NextResponse.next({
     request: { headers: requestHeaders },
   })

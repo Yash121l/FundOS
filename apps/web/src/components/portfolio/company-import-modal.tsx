@@ -85,8 +85,8 @@ export function CompanyImportModal() {
           return result
         })
       )
-      const ok = settlements.filter((s) => s.status === 'fulfilled').length
-      const failed = settlements.filter((s) => s.status === 'rejected').length
+      const ok = settlements.filter((s) => s.status === 'fulfilled' && s.value?.success === true).length
+      const failed = settlements.filter((s) => s.status === 'rejected' || (s.status === 'fulfilled' && s.value?.success === false)).length
       setResults({ ok, failed })
       setStep('done')
     })

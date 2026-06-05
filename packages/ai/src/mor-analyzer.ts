@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { Severity } from '@fundos/types'
+import { db } from '@fundos/database'
 import { getOpenAIClient, MODEL_FAST } from './client'
 
 const EscalationFlagSchema = z.object({
@@ -16,6 +17,7 @@ const MorAnalysisOutputSchema = z.object({
   escalations: z.array(EscalationFlagSchema),
   founderTone: z.enum(['confident', 'cautious', 'distressed', 'uncertain']),
   keyInsights: z.array(z.string()),
+  source: z.enum(['ai', 'rule_based']).default('ai'),
 })
 
 export interface MorInput {
@@ -69,6 +71,7 @@ export interface MorAnalysisOutput {
   escalations: EscalationFlag[]
   founderTone: 'confident' | 'cautious' | 'distressed' | 'uncertain'
   keyInsights: string[]
+  source: 'ai' | 'rule_based'
 }
 
 const SYSTEM_PROMPT = `You are a senior portfolio manager at a top-tier VC firm reviewing a Monthly Operations Report (MOR).
@@ -130,22 +133,48 @@ export class MorAnalyzer {
 
     const durationMs = Date.now() - startedAt
     const text = response.choices[0]?.message?.content ?? '{}'
+    const promptTokens = response.usage?.prompt_tokens ?? 0
+    const completionTokens = response.usage?.completion_tokens ?? 0
 
     console.log('[MorAnalyzer] analyzeWithAI complete', {
       companyId: input.companyId,
       period: input.period,
       durationMs,
-      promptTokens: response.usage?.prompt_tokens,
-      completionTokens: response.usage?.completion_tokens,
+      promptTokens,
+      completionTokens,
     })
 
+    let result: MorAnalysisOutput
+    let fallback = false
     try {
       const parsed = JSON.parse(text)
-      return MorAnalysisOutputSchema.parse(parsed)
+      result = { ...MorAnalysisOutputSchema.parse(parsed), source: 'ai' }
     } catch (err) {
       console.error('[MorAnalyzer] schema validation failed, falling back to rule-based', { companyId: input.companyId, text, err })
-      return this.analyzeRuleBased(input)
+      result = this.analyzeRuleBased(input)
+      fallback = true
     }
+
+    // Persist AI audit log
+    db.auditLog.create({
+      data: {
+        action: 'AI_MOR_ANALYSIS',
+        entityType: 'Company',
+        entityId: input.companyId,
+        metadata: {
+          period: input.period,
+          model: MODEL_FAST,
+          durationMs,
+          promptTokens,
+          completionTokens,
+          fallback,
+          overallHealth: result.overallHealth,
+          escalationCount: result.escalations.length,
+        },
+      },
+    }).catch((e) => console.error('[MorAnalyzer] audit log write failed', e))
+
+    return result
   }
 
   analyzeRuleBased(input: MorInput): MorAnalysisOutput {
@@ -264,6 +293,7 @@ export class MorAnalyzer {
       escalations,
       founderTone,
       keyInsights: insights,
+      source: 'rule_based',
     }
   }
 }

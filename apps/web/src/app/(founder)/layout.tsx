@@ -1,8 +1,9 @@
+import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
 import { FounderNav } from '@/components/founder/founder-nav'
 
-export default async function FounderLayout({ children }: { children: React.ReactNode }) {
+async function FounderLayoutContent({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser()
   if (!user) redirect('/sign-in')
   if (user.role !== 'FOUNDER') redirect('/')
@@ -28,5 +29,13 @@ export default async function FounderLayout({ children }: { children: React.Reac
         {children}
       </main>
     </div>
+  )
+}
+
+export default function FounderLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+      <FounderLayoutContent>{children}</FounderLayoutContent>
+    </Suspense>
   )
 }

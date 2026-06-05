@@ -23,10 +23,14 @@ const MAX_SLUG_ATTEMPTS = 100
 
 const VALID_SECTORS = new Set(['SAAS', 'FINTECH', 'AI', 'DEVTOOLS', 'CLIMATETECH', 'HEALTHTECH', 'MARKETPLACE', 'INFRASTRUCTURE', 'OTHER'])
 const VALID_STAGES = new Set(['PRE_SEED', 'SEED', 'SERIES_A', 'SERIES_B', 'SERIES_C', 'GROWTH'])
+const VALID_STATUSES = new Set(['ACTIVE', 'EXITED', 'INACTIVE', 'WATCHLIST', 'DEAD'])
+const VALID_HEALTH_STATUSES = new Set(['HEALTHY', 'WATCHLIST', 'AT_RISK', 'CRITICAL'])
 
-function validateEnums(data: Pick<CreateCompanyData, 'sector' | 'stage'>) {
+function validateEnums(data: Pick<CreateCompanyData, 'sector' | 'stage' | 'status' | 'healthStatus'>) {
   if (!VALID_SECTORS.has(data.sector)) throw new Error(`Invalid sector: ${data.sector}`)
   if (!VALID_STAGES.has(data.stage)) throw new Error(`Invalid stage: ${data.stage}`)
+  if (!VALID_STATUSES.has(data.status)) throw new Error(`Invalid status: ${data.status}`)
+  if (!VALID_HEALTH_STATUSES.has(data.healthStatus)) throw new Error(`Invalid healthStatus: ${data.healthStatus}`)
 }
 
 export async function createCompany(data: CreateCompanyData): Promise<{ success: boolean; slug: string }> {

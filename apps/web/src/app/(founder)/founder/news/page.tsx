@@ -1,12 +1,11 @@
+import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
 import { FounderNewsForm } from '@/components/founder/founder-news-form'
 
 export const dynamic = 'force-dynamic'
 
-export default async function FounderNewsPage() {
-  
-
+async function FounderNewsContent() {
   const user = await getCurrentUser()
   if (!user || user.role !== 'FOUNDER' || !user.companyId) redirect('/sign-in')
 
@@ -20,5 +19,13 @@ export default async function FounderNewsPage() {
       </div>
       <FounderNewsForm />
     </div>
+  )
+}
+
+export default function FounderNewsPage() {
+  return (
+    <Suspense fallback={<div className="p-5 text-[12px] text-muted-foreground animate-pulse">Loading…</div>}>
+      <FounderNewsContent />
+    </Suspense>
   )
 }

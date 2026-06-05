@@ -6,8 +6,11 @@ import { FounderWeeklyForm } from '@/components/founder/founder-weekly-form'
 
 export const dynamic = 'force-dynamic'
 
-async function FounderWeeklyContent({ companyId }: { companyId: string }) {
-  const { currentWeek, currentWeekPing } = await getFounderMORStatus(companyId)
+async function FounderWeeklyContent() {
+  const user = await getCurrentUser()
+  if (!user || user.role !== 'FOUNDER' || !user.companyId) redirect('/sign-in')
+
+  const { currentWeek, currentWeekPing } = await getFounderMORStatus(user.companyId)
 
   return (
     <div className="max-w-xl mx-auto">
@@ -25,13 +28,10 @@ async function FounderWeeklyContent({ companyId }: { companyId: string }) {
   )
 }
 
-export default async function FounderWeeklyPage() {
-  const user = await getCurrentUser()
-  if (!user || user.role !== 'FOUNDER' || !user.companyId) redirect('/sign-in')
-
+export default function FounderWeeklyPage() {
   return (
     <Suspense fallback={<div className="p-5 text-[12px] text-muted-foreground animate-pulse">Loading…</div>}>
-      <FounderWeeklyContent companyId={user.companyId} />
+      <FounderWeeklyContent />
     </Suspense>
   )
 }

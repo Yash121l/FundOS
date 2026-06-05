@@ -99,68 +99,52 @@ export interface WaterfallResult {
 }
 
 export function computeLiquidationWaterfall(input: WaterfallInput): WaterfallResult[] {
-  let remaining = input.exitValue
+  const afterDebt = Math.max(0, input.exitValue - input.totalDebt)
 
-  // 1. Repay debt first
-  remaining = Math.max(0, remaining - input.totalDebt)
-
-  // Separate preferred (reverse seniority) and common
   const preferred = input.entries.filter((e) => e.shareClass.toLowerCase().includes('preferred'))
   const common = input.entries.filter((e) => !e.shareClass.toLowerCase().includes('preferred'))
+  const allShares = input.entries.reduce((s, e) => s + e.sharesIssued, 0) + (input.optionPool?.vestedShares ?? 0)
+
+  // 1. Determine which non-participating preferred convert vs take preference.
+  //    As-converted value = full afterDebt pro-rata share (not just remaining-after-prefs).
+  const npConverters = new Set<string>()
+  for (const entry of preferred.filter((e) => !e.participating)) {
+    const preference = (entry.liquidationPreference ?? 1) * entry.sharesIssued
+    const asConverted = allShares > 0 ? afterDebt * (entry.sharesIssued / allShares) : 0
+    if (asConverted > preference) npConverters.add(entry.holderName + '|' + entry.shareClass)
+  }
 
   const results: WaterfallResult[] = []
+  let remaining = afterDebt
 
-  // 2. Non-participating preferred — pay liquidation preferences
-  const prefClaims: Array<{ entry: CapTableEntryRow; preference: number }> = []
-  for (const entry of preferred) {
-    const pref = entry.liquidationPreference ?? 1
-    const totalPref = pref * entry.sharesIssued
-    prefClaims.push({ entry, preference: totalPref })
-  }
-
-  // Pay preferences in reverse order (latest series first)
-  const sortedPrefs = [...prefClaims].reverse()
-  for (const { entry, preference } of sortedPrefs) {
+  // 2. Pay preferences: NP-taking-preference first (latest series first), then participating.
+  const sortedPreferred = [...preferred].reverse()
+  for (const entry of sortedPreferred) {
+    const key = entry.holderName + '|' + entry.shareClass
+    if (!entry.participating && npConverters.has(key)) continue  // converting NP skips preference step
+    const preference = (entry.liquidationPreference ?? 1) * entry.sharesIssued
     const paid = Math.min(remaining, preference)
     remaining -= paid
-
-    if (!entry.participating) {
-      // non-participating: will choose between pref and as-converted later
-      results.push({ holderName: entry.holderName, holderType: entry.holderType, shareClass: entry.shareClass, totalProceeds: paid, moic: null })
-    } else {
-      // participating: gets preference NOW plus pro-rata later
-      results.push({ holderName: entry.holderName, holderType: entry.holderType, shareClass: entry.shareClass, totalProceeds: paid, moic: null })
-    }
+    results.push({ holderName: entry.holderName, holderType: entry.holderType, shareClass: entry.shareClass, totalProceeds: paid, moic: null })
   }
 
-  // 3. Distribute remaining to common + participating preferred pro-rata
+  // 3. Distribute remaining pro-rata to: common + NP converters + participating preferred + option pool
   if (remaining > 0) {
-    const totalConvertedShares = input.entries.reduce((s, e) => s + e.sharesIssued, 0) +
-      (input.optionPool?.vestedShares ?? 0)
-    const pricePerShare = totalConvertedShares > 0 ? remaining / totalConvertedShares : 0
-    const distributablePool = remaining
+    const proRataEntries = [
+      ...common,
+      ...preferred.filter((e) => !e.participating && npConverters.has(e.holderName + '|' + e.shareClass)),
+      ...preferred.filter((e) => e.participating),
+    ]
+    const proRataShares = proRataEntries.reduce((s, e) => s + e.sharesIssued, 0) + (input.optionPool?.vestedShares ?? 0)
+    const pricePerShare = proRataShares > 0 ? remaining / proRataShares : 0
 
-    for (const entry of common) {
-      const proceeds = pricePerShare * entry.sharesIssued
-      results.push({ holderName: entry.holderName, holderType: entry.holderType, shareClass: entry.shareClass, totalProceeds: proceeds, moic: null })
-    }
-
-    // non-participating preferred: elect greater of preference or as-converted pro-rata
-    for (const r of results) {
-      const entry = preferred.find((e) => e.holderName === r.holderName && e.shareClass === r.shareClass && !e.participating)
-      if (entry) {
-        const proRataShare = totalConvertedShares > 0
-          ? distributablePool * (entry.sharesIssued / totalConvertedShares)
-          : 0
-        r.totalProceeds = Math.max(r.totalProceeds, proRataShare)
-      }
-    }
-
-    // participating preferred also gets pro-rata on top of preference
-    for (const r of results) {
-      const entry = preferred.find((e) => e.holderName === r.holderName && e.shareClass === r.shareClass && e.participating)
-      if (entry) {
-        r.totalProceeds += pricePerShare * entry.sharesIssued
+    for (const entry of proRataEntries) {
+      const proRata = pricePerShare * entry.sharesIssued
+      const existing = results.find((r) => r.holderName === entry.holderName && r.shareClass === entry.shareClass)
+      if (existing) {
+        existing.totalProceeds += proRata
+      } else {
+        results.push({ holderName: entry.holderName, holderType: entry.holderType, shareClass: entry.shareClass, totalProceeds: proRata, moic: null })
       }
     }
 

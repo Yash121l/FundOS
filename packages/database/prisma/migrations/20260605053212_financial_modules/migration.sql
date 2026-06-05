@@ -447,6 +447,9 @@ CREATE INDEX "convertible_notes_companyId_idx" ON "convertible_notes"("companyId
 CREATE INDEX "option_pools_companyId_idx" ON "option_pools"("companyId");
 
 -- CreateIndex
+CREATE INDEX "option_pools_roundId_idx" ON "option_pools"("roundId");
+
+-- CreateIndex
 CREATE INDEX "capital_activities_fundId_idx" ON "capital_activities"("fundId");
 
 -- CreateIndex
@@ -499,6 +502,8 @@ ALTER TABLE "safe_notes" ADD CONSTRAINT "safe_notes_companyId_fkey" FOREIGN KEY 
 
 -- AddForeignKey
 ALTER TABLE "safe_notes" ADD CONSTRAINT "safe_notes_conversionRoundId_fkey" FOREIGN KEY ("conversionRoundId") REFERENCES "funding_rounds"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- CreateIndex
 CREATE INDEX IF NOT EXISTS "safe_notes_conversionRoundId_idx" ON "safe_notes"("conversionRoundId");
 
 -- AddForeignKey
@@ -506,6 +511,8 @@ ALTER TABLE "convertible_notes" ADD CONSTRAINT "convertible_notes_companyId_fkey
 
 -- AddForeignKey
 ALTER TABLE "convertible_notes" ADD CONSTRAINT "convertible_notes_conversionRoundId_fkey" FOREIGN KEY ("conversionRoundId") REFERENCES "funding_rounds"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- CreateIndex
 CREATE INDEX IF NOT EXISTS "convertible_notes_conversionRoundId_idx" ON "convertible_notes"("conversionRoundId");
 
 -- AddForeignKey

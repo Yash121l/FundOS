@@ -91,7 +91,7 @@ export function LogMetricsModal({ companyId, companyName }: Props) {
               <p className="text-[11px] text-muted-foreground mt-0.5">{companyName}</p>
             </div>
             <Dialog.Close asChild>
-              <button className="text-muted-foreground hover:text-foreground p-1 rounded transition-colors">
+              <button aria-label="Close modal" className="text-muted-foreground hover:text-foreground p-1 rounded transition-colors">
                 <X size={15} />
               </button>
             </Dialog.Close>

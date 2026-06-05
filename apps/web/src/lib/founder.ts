@@ -119,7 +119,7 @@ export async function getFounderMORStatus(companyId: string) {
   ])
 
   const daysUntilDue = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-  const isOverdue = now > dueDate && !currentMor
+  const isOverdue = now > dueDate && (!currentMor || currentMor.status === 'PENDING')
   const isSubmitted = !!currentMor && currentMor.status !== 'PENDING'
   const isDueSoon = !isSubmitted && daysUntilDue <= 5 && daysUntilDue >= 0
 

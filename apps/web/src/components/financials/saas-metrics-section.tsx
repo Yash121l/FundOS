@@ -40,8 +40,10 @@ export function SaasMetricsSection({ saas }: Props) {
     )
   }
 
-  const latestBridge = mrrBridges[0]
-  const latestUE = unitEconomics[0]
+  const sortedBridges = [...mrrBridges].sort((a, b) => b.period.localeCompare(a.period))
+  const sortedUE = [...unitEconomics].sort((a, b) => b.period.localeCompare(a.period))
+  const latestBridge = sortedBridges[0] ?? null
+  const latestUE = sortedUE[0] ?? null
 
   // MRR Bridge waterfall chart data
   const bridgeData = latestBridge

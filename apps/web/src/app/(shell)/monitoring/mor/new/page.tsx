@@ -10,7 +10,7 @@ export default async function NewMORPage() {
       select: { id: true, name: true, slug: true },
       orderBy: { name: 'asc' },
     })
-    .catch(() => [])
+    .catch((err) => { console.error('DB error in new MOR page fetch', err); return [] })
 
   return (
     <div className="p-5 max-w-[900px] w-full">

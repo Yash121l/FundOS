@@ -14,12 +14,16 @@ export function LiquidationWaterfall({ capTable }: Props) {
   const [exitValue, setExitValue] = useState('')
   const [totalDebt, setTotalDebt] = useState('')
 
-  const results = exitValue
+  const exitValueNum = exitValue ? parseFloat(exitValue) : NaN
+  const totalDebtNum = totalDebt ? parseFloat(totalDebt) : 0
+  const inputsValid = Number.isFinite(exitValueNum) && exitValueNum > 0 && Number.isFinite(totalDebtNum) && totalDebtNum >= 0
+
+  const results = inputsValid
     ? computeLiquidationWaterfall({
-        exitValue: parseFloat(exitValue),
+        exitValue: exitValueNum,
         entries: capTable.entries,
         optionPool: capTable.optionPools[0] ?? null,
-        totalDebt: totalDebt ? parseFloat(totalDebt) : 0,
+        totalDebt: totalDebtNum,
       })
     : []
 
@@ -62,12 +66,12 @@ export function LiquidationWaterfall({ capTable }: Props) {
         </div>
       </div>
 
-      {results.length > 0 && (
+      {inputsValid && results.length > 0 && (
         <>
           {/* Distribution bar */}
           <div className="h-6 rounded-full overflow-hidden flex bg-secondary">
             {results.filter((r) => r.totalProceeds > 0).map((r, i) => {
-              const pct = (r.totalProceeds / (parseFloat(exitValue) || 1)) * 100
+              const pct = (r.totalProceeds / (exitValueNum || 1)) * 100
               return (
                 <div
                   key={i}
@@ -92,7 +96,7 @@ export function LiquidationWaterfall({ capTable }: Props) {
                 {results
                   .sort((a, b) => b.totalProceeds - a.totalProceeds)
                   .map((r, i) => {
-                    const pct = parseFloat(exitValue) > 0 ? (r.totalProceeds / parseFloat(exitValue)) * 100 : 0
+                    const pct = exitValueNum > 0 ? (r.totalProceeds / exitValueNum) * 100 : 0
                     return (
                       <tr key={i} className="border-b border-border/40 last:border-0 hover:bg-secondary/20">
                         <td className="px-3 py-2">
@@ -112,16 +116,16 @@ export function LiquidationWaterfall({ capTable }: Props) {
                 <tr className="border-t border-border bg-secondary/20">
                   <td className="px-3 py-2 text-[12px] font-semibold" colSpan={2}>Total Distributed</td>
                   <td className="px-3 py-2 text-right text-[12px] font-semibold tabular-nums">{formatCurrency(totalDistributed, true)}</td>
-                  <td className="px-3 py-2 text-right text-[12px] text-muted-foreground">{parseFloat(exitValue) > 0 ? ((totalDistributed / parseFloat(exitValue)) * 100).toFixed(1) : '—'}%</td>
+                  <td className="px-3 py-2 text-right text-[12px] text-muted-foreground">{exitValueNum > 0 ? ((totalDistributed / exitValueNum) * 100).toFixed(1) : '—'}%</td>
                 </tr>
               </tfoot>
             </table>
           </div>
 
           {/* Undistributed (rounding/debt) */}
-          {parseFloat(exitValue) - totalDistributed - (totalDebt ? parseFloat(totalDebt) : 0) > 1 && (
+          {exitValueNum - totalDistributed - totalDebtNum > 1 && (
             <p className="text-[11px] text-muted-foreground">
-              Note: {formatCurrency(parseFloat(exitValue) - totalDistributed, true)} undistributed (debt repayment or rounding)
+              Note: {formatCurrency(exitValueNum - totalDistributed, true)} undistributed (debt repayment or rounding)
             </p>
           )}
         </>

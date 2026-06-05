@@ -22,6 +22,7 @@ export function FounderWeeklyForm({ week, alreadySubmitted }: Props) {
   const router = useRouter()
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(alreadySubmitted)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const [kpis, setKpis] = useState(
     DEFAULT_KPIS.map((label) => ({ label, value: '' }))
@@ -37,6 +38,7 @@ export function FounderWeeklyForm({ week, alreadySubmitted }: Props) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSubmitting(true)
+    setSubmitError(null)
     try {
       const data: WeeklyKpiPingData = {
         week,
@@ -51,6 +53,7 @@ export function FounderWeeklyForm({ week, alreadySubmitted }: Props) {
       setSubmitted(true)
     } catch (err) {
       console.error('Failed to submit weekly KPI ping:', err)
+      setSubmitError(err instanceof Error ? err.message : 'Failed to submit. Please try again.')
     } finally {
       setSubmitting(false)
     }
@@ -122,6 +125,7 @@ export function FounderWeeklyForm({ week, alreadySubmitted }: Props) {
         />
       </div>
 
+      {submitError && <p className="text-[12px] text-red-400">{submitError}</p>}
       <div className="flex items-center gap-3">
         <button
           type="submit"

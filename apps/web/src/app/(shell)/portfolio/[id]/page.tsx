@@ -1,5 +1,4 @@
 import { notFound } from 'next/navigation'
-import { Suspense } from 'react'
 import { getCompanyBySlug, getCompanySignals } from '@/lib/portfolio'
 import { getFinancialStatements, getSaasMetrics } from '@/lib/financial'
 import { getCompanyInvestments, getCapTable } from '@/lib/investment'
@@ -52,8 +51,7 @@ export default async function CompanyDetailPage({ params, searchParams }: Props)
   const healthBreakdown = metrics.length > 0 ? computeHealthScore(metrics) : null
 
   return (
-    <Suspense fallback={<div className="p-5 text-[13px] text-muted-foreground">Loading company…</div>}>
-      <div className="flex flex-col">
+    <div className="flex flex-col">
         {/* Sticky header */}
         <div className="sticky top-0 z-10 bg-background">
           <CompanyHeader company={company} latest={latest} prev={prev} />
@@ -152,7 +150,6 @@ export default async function CompanyDetailPage({ params, searchParams }: Props)
             <CapTableSection companyId={company.id} capTable={capTable} />
           )}
         </div>
-      </div>
-    </Suspense>
+    </div>
   )
 }

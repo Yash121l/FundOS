@@ -16,7 +16,7 @@ function safeRedirectPath(value: FormDataEntryValue | null, role: string): strin
     LP: '/lp-reports',
   }
   const fallback = fallbackByRole[role] ?? '/'
-  if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//')) return fallback
+  if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//') || value.includes('\\') || value.includes(':')) return fallback
   if (value.startsWith('/sign-in') || value.startsWith('/sign-up')) return fallback
   if (role === 'FOUNDER') return value.startsWith('/founder') ? value : fallback
   if (role === 'LP') return value.startsWith('/lp-reports') ? value : fallback

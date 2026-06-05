@@ -235,7 +235,8 @@ export function MonitoringDashboardView({ data }: Props) {
                         </button>
                         <button
                           onClick={() => handleDismiss(esc.id)}
-                          className="h-6 px-2.5 rounded-md border border-border text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                          disabled={actionPending}
+                          className="h-6 px-2.5 rounded-md border border-border text-[10px] text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           Dismiss
                         </button>
@@ -377,7 +378,7 @@ export function MonitoringDashboardView({ data }: Props) {
           {complianceRows.filter((r) => r.mor?.status && r.mor.status !== 'PENDING').slice(0, 8).map((row) => {
             const mor = row.mor!
             let flags: Array<{ severity: string }> = []
-            try { flags = mor.aiFlags ? JSON.parse(mor.aiFlags as string) : [] } catch { flags = [] }
+            try { const parsed = mor.aiFlags ? JSON.parse(mor.aiFlags as string) : []; flags = Array.isArray(parsed) ? parsed : [] } catch { flags = [] }
             const critFlag = flags.find((f) => f.severity === 'CRITICAL')
             const highFlag = flags.find((f) => f.severity === 'HIGH')
             const flagSeverity = critFlag ? 'CRITICAL' : highFlag ? 'HIGH' : flags.length > 0 ? 'MEDIUM' : null

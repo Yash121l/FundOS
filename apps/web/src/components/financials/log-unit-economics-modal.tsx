@@ -26,9 +26,10 @@ export function LogUnitEconomicsModal({ companyId, companyName }: Props) {
   function num(v: string): number | null { const n = parseFloat(v); return isNaN(n) ? null : n }
   function ni(v: string): number | null { const n = parseInt(v); return isNaN(n) ? null : n }
 
-  const ltvCac = num(form.ltv) != null && num(form.cac) != null && num(form.cac)! > 0
-    ? (num(form.ltv)! / num(form.cac)!).toFixed(1)
-    : '—'
+  const ltvCacNum = num(form.ltv) != null && num(form.cac) != null && num(form.cac)! > 0
+    ? num(form.ltv)! / num(form.cac)!
+    : null
+  const ltvCac = ltvCacNum != null ? ltvCacNum.toFixed(1) : '—'
 
   function handleSubmit() {
     if (!form.period) { setError('Period is required'); return }
@@ -65,7 +66,7 @@ export function LogUnitEconomicsModal({ companyId, companyName }: Props) {
               <p className="text-[11px] text-muted-foreground">{companyName}</p>
             </div>
             <Dialog.Close asChild>
-              <button className="text-muted-foreground hover:text-foreground p-1 rounded"><X size={15} /></button>
+              <button aria-label="Close modal" className="text-muted-foreground hover:text-foreground p-1 rounded"><X size={15} /></button>
             </Dialog.Close>
           </div>
           <div className="p-5 space-y-4">
@@ -90,11 +91,11 @@ export function LogUnitEconomicsModal({ companyId, companyName }: Props) {
                 </Field>
               ))}
             </div>
-            {(num(form.ltv) != null && num(form.cac) != null) && (
+            {ltvCacNum != null && (
               <div className="rounded-lg border border-border bg-secondary/20 px-4 py-3 flex justify-between items-center">
                 <span className="text-[12px] text-muted-foreground">LTV:CAC Ratio</span>
                 <span className={cn('text-[14px] font-semibold tabular-nums',
-                  parseFloat(ltvCac) >= 3 ? 'text-emerald-400' : parseFloat(ltvCac) >= 1 ? 'text-amber-400' : 'text-red-400'
+                  ltvCacNum >= 3 ? 'text-emerald-400' : ltvCacNum >= 1 ? 'text-amber-400' : 'text-red-400'
                 )}>{ltvCac}x</span>
               </div>
             )}

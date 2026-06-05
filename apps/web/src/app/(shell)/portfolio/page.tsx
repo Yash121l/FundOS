@@ -11,18 +11,11 @@ interface Props {
   searchParams: Promise<{ health?: string }>
 }
 
-async function PortfolioTableLoader({ health }: { health: string }) {
+async function PortfolioData({ health }: { health: string }) {
   const companies = await getAllCompanies()
   return (
     <>
-      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <h1 className="text-[16px] font-semibold">Portfolio</h1>
-        <div className="flex items-center gap-2">
-          <ExportButton data={companies} />
-          <CompanyImportModal />
-          <AddCompanyModal />
-        </div>
-      </div>
+      <ExportButton data={companies} />
       <PortfolioTable data={companies} initialHealth={health} />
     </>
   )
@@ -33,8 +26,15 @@ export default async function PortfolioPage({ searchParams }: Props) {
 
   return (
     <div className="p-5">
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <h1 className="text-[16px] font-semibold">Portfolio</h1>
+        <div className="flex items-center gap-2">
+          <CompanyImportModal />
+          <AddCompanyModal />
+        </div>
+      </div>
       <Suspense fallback={<div className="text-[13px] text-muted-foreground p-4">Loading portfolio…</div>}>
-        <PortfolioTableLoader health={params.health ?? ''} />
+        <PortfolioData health={params.health ?? ''} />
       </Suspense>
     </div>
   )

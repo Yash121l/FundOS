@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 
 const PREF_KEY = 'signalos_prefs'
@@ -70,9 +70,11 @@ function Toggle({ label, hint, checked, onChange }: {
 export function PreferencesTab() {
   const [prefs, setPrefs] = useState<Prefs>(DEFAULTS)
   const [saved, setSaved] = useState(false)
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     setPrefs(loadPrefs())
+    return () => { if (toastTimerRef.current) clearTimeout(toastTimerRef.current) }
   }, [])
 
   function update<K extends keyof Prefs>(k: K, v: Prefs[K]) {
@@ -80,7 +82,8 @@ export function PreferencesTab() {
     setPrefs(next)
     savePrefs(next)
     setSaved(true)
-    setTimeout(() => setSaved(false), 1500)
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
+    toastTimerRef.current = setTimeout(() => setSaved(false), 1500)
   }
 
   return (

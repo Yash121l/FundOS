@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect, useRef } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { X, GitBranch } from 'lucide-react'
 import { logMrrBridge } from '@/lib/saas-actions'
@@ -14,6 +14,11 @@ export function LogMrrBridgeModal({ companyId, companyName }: Props) {
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => { if (timeoutRef.current) clearTimeout(timeoutRef.current) }
+  }, [])
   const periods = getPeriodOptions(12)
 
   const [form, setForm] = useState({
@@ -48,7 +53,8 @@ export function LogMrrBridgeModal({ companyId, companyName }: Props) {
           totalCustomers: ni(form.totalCustomers),
         })
         setSuccess(true)
-        setTimeout(() => { setOpen(false); setSuccess(false) }, 1200)
+        if (timeoutRef.current) clearTimeout(timeoutRef.current)
+        timeoutRef.current = setTimeout(() => { setOpen(false); setSuccess(false) }, 1200)
       } catch (e) { setError('Failed to save.'); console.error(e) }
     })
   }

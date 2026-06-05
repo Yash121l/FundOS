@@ -26,12 +26,12 @@ export interface CapTableEntryData {
   boardSeat: boolean
 }
 
-export async function createCapTableEntry(data: CapTableEntryData): Promise<{ success: boolean; id: string }> {
+export async function createCapTableEntry(data: CapTableEntryData): Promise<{ success: boolean; id: string; error?: string }> {
   if (!VALID_HOLDER_TYPES.has(data.holderType)) {
-    return { success: false, id: '' }
+    return { success: false, id: '', error: `Invalid holderType: ${data.holderType}` }
   }
   if (!VALID_ANTI_DILUTION.has(data.antiDilution)) {
-    return { success: false, id: '' }
+    return { success: false, id: '', error: `Invalid antiDilution: ${data.antiDilution}` }
   }
   const entry = await db.capTableEntry.create({
     data: {
@@ -76,9 +76,9 @@ export interface SafeNoteData {
   triggerAmount: number | null
 }
 
-export async function createSafeNote(data: SafeNoteData): Promise<{ success: boolean; id: string }> {
+export async function createSafeNote(data: SafeNoteData): Promise<{ success: boolean; id: string; error?: string }> {
   if (!VALID_SAFE_TYPES.has(data.safeType)) {
-    return { success: false, id: '' }
+    return { success: false, id: '', error: `Invalid safeType: ${data.safeType}` }
   }
   const note = await db.safeNote.create({
     data: {
@@ -100,7 +100,7 @@ export async function createSafeNote(data: SafeNoteData): Promise<{ success: boo
 
 export async function updateSafeNoteStatus(id: string, status: string, conversionRoundId?: string): Promise<{ success: boolean }> {
   if (!VALID_NOTE_STATUSES.has(status)) {
-    return { success: false }
+    throw new Error(`Invalid safe note status: ${status}`)
   }
   const note = await db.safeNote.update({
     where: { id },

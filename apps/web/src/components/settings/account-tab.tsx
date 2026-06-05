@@ -59,7 +59,7 @@ export function AccountTab({ me }: Props) {
       <div className="rounded-xl border border-border bg-card divide-y divide-border">
         <div className="flex items-center gap-4 px-4 py-4">
           <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center text-[13px] font-semibold text-muted-foreground flex-shrink-0">
-            {me.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
+            {(me.name?.trim().split(/\s+/).filter(Boolean).map((w) => w[0]).join('').slice(0, 2).toUpperCase()) || me.email?.[0]?.toUpperCase() || '?'}
           </div>
           <div>
             <p className="text-[14px] font-semibold">{me.name}</p>

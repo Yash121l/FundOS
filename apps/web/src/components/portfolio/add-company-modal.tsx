@@ -31,6 +31,14 @@ export function AddCompanyModal() {
 
   function handleSubmit() {
     if (!form.name.trim()) { setError('Company name is required'); return }
+    if (form.website) {
+      try {
+        const url = form.website.includes('://') ? form.website : `https://${form.website}`
+        new URL(url)
+      } catch {
+        setError('Website must be a valid URL'); return
+      }
+    }
     setError('')
     startTransition(async () => {
       try {

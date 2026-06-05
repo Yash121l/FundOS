@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { X, Plus, Trash2, TrendingUp } from 'lucide-react'
 import { formatCurrency, formatDate } from '@fundos/shared'
@@ -75,7 +76,7 @@ function FundSetupModal({ existing, onDone }: { existing?: FundPerformance['prof
         <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-lg max-h-[90vh] overflow-y-auto bg-background border border-border rounded-xl shadow-2xl">
           <div className="flex items-center justify-between px-5 py-4 border-b border-border sticky top-0 bg-background">
             <Dialog.Title className="text-[14px] font-semibold">Fund Profile</Dialog.Title>
-            <Dialog.Close asChild><button className="text-muted-foreground hover:text-foreground p-1 rounded"><X size={15} /></button></Dialog.Close>
+            <Dialog.Close asChild><button aria-label="Close dialog" className="text-muted-foreground hover:text-foreground p-1 rounded"><X size={15} /></button></Dialog.Close>
           </div>
           <div className="p-5 space-y-4">
             <div className="grid grid-cols-2 gap-3">
@@ -139,7 +140,7 @@ function AddActivityModal({ fundId, onDone }: { fundId: string; onDone: () => vo
         <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-sm max-h-[90vh] overflow-y-auto bg-background border border-border rounded-xl shadow-2xl">
           <div className="flex items-center justify-between px-5 py-4 border-b border-border sticky top-0 bg-background">
             <Dialog.Title className="text-[14px] font-semibold">Log Capital Activity</Dialog.Title>
-            <Dialog.Close asChild><button className="text-muted-foreground hover:text-foreground p-1 rounded"><X size={15} /></button></Dialog.Close>
+            <Dialog.Close asChild><button aria-label="Close dialog" className="text-muted-foreground hover:text-foreground p-1 rounded"><X size={15} /></button></Dialog.Close>
           </div>
           <div className="p-5 space-y-4">
             <Field label="Type">
@@ -168,8 +169,10 @@ function AddActivityModal({ fundId, onDone }: { fundId: string; onDone: () => vo
 // ── Main Fund Performance View ────────────────────────────────
 
 export function FundPerformanceView({ data }: Props) {
+  const router = useRouter()
   const [, startTransition] = useTransition()
   const [tab, setTab] = useState<'overview' | 'schedule' | 'activity'>('overview')
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   if (!data) {
     return (
@@ -179,7 +182,7 @@ export function FundPerformanceView({ data }: Props) {
             <h1 className="text-[18px] font-semibold">Fund Performance</h1>
             <p className="text-[13px] text-muted-foreground mt-0.5">TVPI · DPI · RVPI · Net IRR · Schedule of Investments</p>
           </div>
-          <FundSetupModal onDone={() => {}} />
+          <FundSetupModal onDone={() => router.refresh()} />
         </div>
         <div className="rounded-xl border border-border bg-card p-8 text-center">
           <TrendingUp size={32} className="text-muted-foreground mx-auto mb-3" />
@@ -202,7 +205,7 @@ export function FundPerformanceView({ data }: Props) {
           <p className="text-[13px] text-muted-foreground mt-0.5">Vintage {data.profile.vintage} · {formatCurrency(data.profile.committedCapital, true)} committed</p>
         </div>
         <div className="flex gap-2">
-          <FundSetupModal existing={data.profile} onDone={() => {}} />
+          <FundSetupModal existing={data.profile} onDone={() => router.refresh()} />
         </div>
       </div>
 
@@ -284,7 +287,7 @@ export function FundPerformanceView({ data }: Props) {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-[13px] font-medium">Capital Activity</p>
-            <AddActivityModal fundId={data.profile.id} onDone={() => {}} />
+            <AddActivityModal fundId={data.profile.id} onDone={() => router.refresh()} />
           </div>
           {data.activities.length === 0 ? (
             <div className="rounded-xl border border-border bg-card p-8 text-center text-[13px] text-muted-foreground">
@@ -314,9 +317,7 @@ export function FundPerformanceView({ data }: Props) {
                         <td className="px-3 py-2 text-[11px] text-muted-foreground">{a.lpName ?? '—'}</td>
                         <td className="px-3 py-2 text-[11px] text-muted-foreground">{a.description ?? '—'}</td>
                         <td className="px-3 py-2">
-                          <button onClick={() => { if (confirm('Delete?')) startTransition(async () => { await deleteCapitalActivity(a.id) }) }} className="text-muted-foreground hover:text-red-400 transition-colors">
-                            <Trash2 size={12} />
-                          </button>
+                          <button aria-label="Delete activity" onClick={() => setConfirmDeleteId(a.id)} className="text-muted-foreground hover:text-red-400 transition-colors"><Trash2 size={12} /></button>
                         </td>
                       </tr>
                     )
@@ -371,6 +372,30 @@ export function FundPerformanceView({ data }: Props) {
           </div>
         </div>
       )}
+
+      {/* Delete confirmation dialog */}
+      <Dialog.Root open={confirmDeleteId != null} onOpenChange={(open) => { if (!open) setConfirmDeleteId(null) }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 bg-black/60 z-50 backdrop-blur-sm" />
+          <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-sm bg-background border border-border rounded-xl shadow-2xl p-6">
+            <Dialog.Title className="text-[14px] font-semibold mb-2">Delete Activity?</Dialog.Title>
+            <Dialog.Description className="text-[12px] text-muted-foreground mb-5">This action cannot be undone.</Dialog.Description>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setConfirmDeleteId(null)} className="h-8 px-3 rounded-md border border-border text-[12px] text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
+              <button
+                onClick={() => {
+                  const id = confirmDeleteId
+                  setConfirmDeleteId(null)
+                  if (id) startTransition(async () => { await deleteCapitalActivity(id) })
+                }}
+                className="h-8 px-3 rounded-md bg-red-600 text-white text-[12px] font-medium hover:bg-red-500 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </div>
   )
 }

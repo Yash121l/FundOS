@@ -48,7 +48,7 @@ const NEWS_TYPE_LABELS: Record<string, string> = {
   OTHER: 'Update',
 }
 
-export function FounderDashboard({ company, kpis, userName }: Props) {
+export function FounderDashboard({ company, kpis, userName, morStatus }: Props) {
   const { current, previous, period } = kpis
   const latestUpdate = company.updates[0]
 
@@ -114,6 +114,43 @@ export function FounderDashboard({ company, kpis, userName }: Props) {
           invertDelta
         />
       </div>
+
+      {/* MOR status banner */}
+      {(morStatus.isOverdue || morStatus.isDueSoon || morStatus.isSubmitted) && (
+        <div className={cn(
+          'rounded-lg border p-3 flex items-center justify-between gap-3',
+          morStatus.isOverdue
+            ? 'border-red-500/40 bg-red-500/10'
+            : morStatus.isDueSoon
+            ? 'border-amber-500/40 bg-amber-500/10'
+            : 'border-emerald-500/40 bg-emerald-500/10'
+        )}>
+          <div className="flex items-center gap-2 min-w-0">
+            {morStatus.isOverdue ? (
+              <AlertTriangle size={14} className="flex-shrink-0 text-red-400" />
+            ) : morStatus.isSubmitted ? (
+              <CheckCircle size={14} className="flex-shrink-0 text-emerald-400" />
+            ) : (
+              <Clock size={14} className="flex-shrink-0 text-amber-400" />
+            )}
+            <p className="text-[12px] font-medium truncate">
+              {morStatus.isOverdue
+                ? `Monthly Report Overdue — ${morStatus.reportingPeriod}`
+                : morStatus.isSubmitted
+                ? `Monthly Report Submitted — ${morStatus.reportingPeriod}`
+                : `Monthly Report Due in ${morStatus.daysUntilDue} day${morStatus.daysUntilDue !== 1 ? 's' : ''} — ${morStatus.reportingPeriod}`}
+            </p>
+          </div>
+          {!morStatus.isSubmitted && (
+            <Link
+              href="/founder/update"
+              className="flex-shrink-0 text-[11px] font-medium text-primary hover:underline"
+            >
+              Submit now
+            </Link>
+          )}
+        </div>
+      )}
 
       {/* Health score */}
       <div className="rounded-lg border border-border bg-card p-4">

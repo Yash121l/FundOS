@@ -35,6 +35,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function CapTableEntries({ companyId, capTable }: { companyId: string; capTable: CapTable }) {
   const [, startTransition] = useTransition()
   const [showForm, setShowForm] = useState(false)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     holderName: '', holderType: 'INVESTOR', shareClass: 'Preferred Series A',
     sharesIssued: '', ownershipPctBasic: '', ownershipPctFullyDiluted: '',
@@ -121,7 +123,7 @@ function CapTableEntries({ companyId, capTable }: { companyId: string; capTable:
                     <td className="px-3 py-2 text-[11px] text-muted-foreground">{e.liquidationPreference != null ? `${e.liquidationPreference}x` : '—'}{e.participating ? ' +part.' : ''}</td>
                     <td className="px-3 py-2 text-[11px] text-muted-foreground">{e.boardSeat ? '✓' : '—'}</td>
                     <td className="px-3 py-2">
-                      <button onClick={() => { if (confirm('Delete?')) startTransition(async () => { await deleteCapTableEntry(e.id) }) }} className="text-muted-foreground hover:text-red-400 transition-colors">
+                      <button aria-label="Delete entry" onClick={() => setConfirmDeleteId(e.id)} className="text-muted-foreground hover:text-red-400 transition-colors">
                         <Trash2 size={11} />
                       </button>
                     </td>
@@ -132,6 +134,39 @@ function CapTableEntries({ companyId, capTable }: { companyId: string; capTable:
           </div>
         </div>
       )}
+
+      {/* Delete confirmation dialog */}
+      <Dialog.Root open={confirmDeleteId != null} onOpenChange={(open) => { if (!open) { setConfirmDeleteId(null); setDeleteError(null) } }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 bg-black/60 z-50 backdrop-blur-sm" />
+          <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-sm bg-background border border-border rounded-xl shadow-2xl p-6">
+            <Dialog.Title className="text-[14px] font-semibold mb-2">Delete Entry?</Dialog.Title>
+            <Dialog.Description className="text-[12px] text-muted-foreground mb-5">This action cannot be undone.</Dialog.Description>
+            {deleteError && <p className="text-[11px] text-red-400 mb-3">{deleteError}</p>}
+            <div className="flex justify-end gap-2">
+              <button onClick={() => { setConfirmDeleteId(null); setDeleteError(null) }} className="h-8 px-3 rounded-md border border-border text-[12px] text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
+              <button
+                onClick={() => {
+                  const id = confirmDeleteId
+                  if (!id) return
+                  startTransition(async () => {
+                    try {
+                      await deleteCapTableEntry(id)
+                      setConfirmDeleteId(null)
+                      setDeleteError(null)
+                    } catch {
+                      setDeleteError('Failed to delete entry.')
+                    }
+                  })
+                }}
+                className="h-8 px-3 rounded-md bg-red-600 text-white text-[12px] font-medium hover:bg-red-500 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
 
       {showForm && (
         <Dialog.Root open onOpenChange={() => setShowForm(false)}>

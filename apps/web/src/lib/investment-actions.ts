@@ -4,6 +4,9 @@ import { db } from '@fundos/database'
 import { revalidatePath } from 'next/cache'
 
 const VALID_ROUND_TYPES = new Set(['PRE_SEED', 'SEED', 'SERIES_A', 'SERIES_B', 'SERIES_C', 'SERIES_D', 'SERIES_E', 'BRIDGE', 'CONVERTIBLE', 'SAFE', 'OTHER'])
+const VALID_SECURITY_TYPES = new Set(['COMMON', 'PREFERRED', 'SAFE', 'CONVERTIBLE_NOTE', 'WARRANT', 'OTHER'])
+const VALID_VALUATION_METHODS = new Set(['LAST_ROUND', 'ARR_MULTIPLE', 'DCF', 'PWERM', 'OPM', 'NET_ASSETS'])
+const VALID_MARK_STATUSES = new Set(['DRAFT', 'REVIEWED', 'APPROVED'])
 
 function validateRoundType(value: string): boolean {
   return VALID_ROUND_TYPES.has(value)
@@ -27,28 +30,36 @@ export interface FundingRoundData {
 }
 
 export async function createFundingRound(data: FundingRoundData): Promise<{ success: boolean; id: string }> {
-  const round = await db.fundingRound.create({
-    data: {
-      companyId: data.companyId,
-      roundName: data.roundName,
-      roundType: validateRoundType(data.roundType) ? data.roundType as never : (() => { throw new Error(`Invalid roundType: ${data.roundType}`) })(),
-      closeDate: new Date(data.closeDate),
-      preMoney: data.preMoney,
-      postMoney: data.postMoney,
-      roundSize: data.roundSize,
-      pricePerShare: data.pricePerShare,
-      shareClass: data.shareClass || null,
-      optionPoolPct: data.optionPoolPct,
-      leadInvestor: data.leadInvestor || null,
-      notes: data.notes || null,
-    },
-  })
-  revalidatePath(`/portfolio/${data.companyId}`)
-  return { success: true, id: round.id }
+  if (!validateRoundType(data.roundType)) {
+    throw new Error(`Invalid roundType: ${data.roundType}`)
+  }
+  try {
+    const round = await db.fundingRound.create({
+      data: {
+        companyId: data.companyId,
+        roundName: data.roundName,
+        roundType: data.roundType as never,
+        closeDate: new Date(data.closeDate),
+        preMoney: data.preMoney,
+        postMoney: data.postMoney,
+        roundSize: data.roundSize,
+        pricePerShare: data.pricePerShare,
+        shareClass: data.shareClass || null,
+        optionPoolPct: data.optionPoolPct,
+        leadInvestor: data.leadInvestor || null,
+        notes: data.notes || null,
+      },
+    })
+    revalidatePath(`/portfolio/${data.companyId}`)
+    return { success: true, id: round.id }
+  } catch (err) {
+    console.error('[createFundingRound] failed', err)
+    return { success: false, id: '' }
+  }
 }
 
 export async function updateFundingRound(id: string, data: Omit<FundingRoundData, 'companyId'>): Promise<{ success: boolean }> {
-  const round = await db.fundingRound.findUniqueOrThrow({ where: { id } })
+  const round = await db.fundingRound.findUniqueOrThrow({ where: { id }, select: { companyId: true } })
   await db.fundingRound.update({
     where: { id },
     data: {
@@ -70,7 +81,7 @@ export async function updateFundingRound(id: string, data: Omit<FundingRoundData
 }
 
 export async function deleteFundingRound(id: string): Promise<{ success: boolean }> {
-  const round = await db.fundingRound.findUniqueOrThrow({ where: { id } })
+  const round = await db.fundingRound.findUniqueOrThrow({ where: { id }, select: { companyId: true } })
   await db.fundingRound.delete({ where: { id } })
   revalidatePath(`/portfolio/${round.companyId}`)
   return { success: true }
@@ -96,6 +107,9 @@ export interface FundInvestmentData {
 }
 
 export async function createFundInvestment(data: FundInvestmentData): Promise<{ success: boolean; id: string }> {
+  if (!VALID_SECURITY_TYPES.has(data.securityType)) {
+    throw new Error(`Invalid securityType: ${data.securityType}`)
+  }
   const inv = await db.fundInvestment.create({
     data: {
       companyId: data.companyId,
@@ -119,7 +133,7 @@ export async function createFundInvestment(data: FundInvestmentData): Promise<{ 
 }
 
 export async function deleteFundInvestment(id: string): Promise<{ success: boolean }> {
-  const inv = await db.fundInvestment.findUniqueOrThrow({ where: { id } })
+  const inv = await db.fundInvestment.findUniqueOrThrow({ where: { id }, select: { companyId: true } })
   await db.fundInvestment.delete({ where: { id } })
   revalidatePath(`/portfolio/${inv.companyId}`)
   return { success: true }
@@ -141,6 +155,12 @@ export interface ValuationMarkData {
 }
 
 export async function saveValuationMark(data: ValuationMarkData): Promise<{ success: boolean; id: string }> {
+  if (!VALID_VALUATION_METHODS.has(data.valuationMethod)) {
+    return { success: false, id: '' }
+  }
+  if (!VALID_MARK_STATUSES.has(data.status)) {
+    return { success: false, id: '' }
+  }
   const mark = await db.valuationMark.create({
     data: {
       investmentId: data.investmentId,

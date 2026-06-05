@@ -5,12 +5,15 @@ import { BoardDashboardView } from '@/components/board/board-dashboard'
 export const dynamic = 'force-dynamic'
 
 async function BoardContent() {
-  const data = await getBoardDashboard().catch(() => ({
-    meetings: [],
-    followOnNotes: [],
-    valueAdd: [],
-    valuations: [],
-  }))
+  const data = await getBoardDashboard().catch((err) => {
+    console.error('[BoardContent] getBoardDashboard failed', err)
+    return {
+      meetings: [],
+      followOnNotes: [],
+      valueAdd: [],
+      valuations: [],
+    }
+  })
 
   return <BoardDashboardView data={data} />
 }

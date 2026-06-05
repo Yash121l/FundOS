@@ -5,6 +5,13 @@ import { MorAnalyzer } from '@fundos/ai'
 import { revalidatePath } from 'next/cache'
 import { getCurrentUser } from './auth'
 
+function parsePeriodToDueDate(period: string): Date {
+  const [year, month] = period.split('-').map(Number)
+  const reportingMonth = month! - 1  // convert 1-indexed to 0-indexed
+  const dueMonth = reportingMonth + 1  // next month (0-indexed)
+  return new Date(year!, dueMonth, 10)
+}
+
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export interface MorFormData {
@@ -110,8 +117,7 @@ export async function submitMOR(
       : null
 
   // Due date: 10th of following month
-  const [year, month] = period.split('-').map(Number)
-  const dueDate = new Date(year!, month!, 10) // next month's 10th
+  const dueDate = parsePeriodToDueDate(period)
 
   // Consecutive miss tracking
   const prevReports = await db.monthlyOperationsReport.findMany({

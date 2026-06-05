@@ -15,7 +15,8 @@ interface Props {
 export default async function LPReportDetailPage({ params }: Props) {
   const { id } = await params
   const user = await getSessionUser()
-  const canViewAllReports = !!user && isInternalRole(user.role as AppRole)
+  const VALID_APP_ROLES = new Set<string>(['ANALYST', 'PARTNER', 'PORTFOLIO_OPS', 'FINANCE', 'FOUNDER', 'LP'])
+  const canViewAllReports = !!user && VALID_APP_ROLES.has(user.role) && isInternalRole(user.role as AppRole)
   const report = await getLPReportById(id, canViewAllReports ? undefined : user?.id)
   if (!report) notFound()
 

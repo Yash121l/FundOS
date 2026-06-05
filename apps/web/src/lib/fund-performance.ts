@@ -9,6 +9,10 @@ export function xirr(cashflows: { amount: number; date: Date }[], guess = 0.1): 
   const daysFromStart = cashflows.map((cf) => (cf.date.getTime() - t0) / 86_400_000)
   const amounts = cashflows.map((cf) => cf.amount)
 
+  const hasPositive = amounts.some((a) => a > 0)
+  const hasNegative = amounts.some((a) => a < 0)
+  if (!hasPositive || !hasNegative) return null
+
   let rate = guess
   for (let iter = 0; iter < 200; iter++) {
     let f = 0

@@ -1,9 +1,10 @@
+import { Suspense } from 'react'
 import { getMonitoringDashboard } from '@/lib/monitoring-actions'
 import { MonitoringDashboardView } from '@/components/monitoring/monitoring-dashboard'
 
 export const dynamic = 'force-dynamic'
 
-export default async function MonitoringPage() {
+async function MonitoringContent() {
   const now = new Date()
   const reportingYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear()
   const reportingMonthNum = now.getMonth() === 0 ? 12 : now.getMonth()
@@ -21,4 +22,12 @@ export default async function MonitoringPage() {
   }))
 
   return <MonitoringDashboardView data={data} />
+}
+
+export default function MonitoringPage() {
+  return (
+    <Suspense fallback={<div className="p-5 text-[12px] text-muted-foreground animate-pulse">Loading monitoring dashboard…</div>}>
+      <MonitoringContent />
+    </Suspense>
+  )
 }

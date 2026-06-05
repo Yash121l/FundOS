@@ -58,6 +58,7 @@ export function FounderMORForm({
   const router = useRouter()
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   // P&L
   const [revSub, setRevSub] = useState('')
@@ -116,10 +117,11 @@ export function FounderMORForm({
     ? (parseFloat(cashBalance) / parseFloat(burnRate)).toFixed(1)
     : null
 
-  const n = (v: string) => (v ? parseFloat(v) : null)
+  const n = (v: string) => { if (!v) return null; const parsed = parseFloat(v.trim()); return Number.isFinite(parsed) ? parsed : null }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    setSubmitError(null)
     setSubmitting(true)
     try {
       await submitFounderMOR({
@@ -155,6 +157,7 @@ export function FounderMORForm({
       setSubmitted(true)
     } catch (err) {
       console.error('Failed to submit MOR:', err)
+      setSubmitError(err instanceof Error ? err.message : String(err))
     } finally {
       setSubmitting(false)
     }
@@ -408,6 +411,9 @@ export function FounderMORForm({
           AI checks will run automatically. Threshold breaches trigger escalation flags to your Portfolio Manager.
         </p>
       </div>
+      {submitError && (
+        <p className="text-[12px] text-red-400">{submitError}</p>
+      )}
     </form>
   )
 }

@@ -24,5 +24,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS "sessions_token_key" ON "sessions"("token");
 CREATE INDEX IF NOT EXISTS "sessions_userId_idx" ON "sessions"("userId");
 CREATE INDEX IF NOT EXISTS "sessions_expiresAt_idx" ON "sessions"("expiresAt");
 
-ALTER TABLE "sessions" ADD CONSTRAINT "sessions_userId_fkey"
-    FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'sessions_userId_fkey'
+  ) THEN
+    ALTER TABLE "sessions" ADD CONSTRAINT "sessions_userId_fkey"
+        FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+END $$;

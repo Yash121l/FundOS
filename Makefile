@@ -45,7 +45,11 @@ dev:
 	if [ ! -f .env.local ]; then cp .env.example .env.local; echo "Created .env.local from .env.example"; fi; \
 	$(COMPOSE) up db redis -d && \
 	echo "Waiting for Postgres to be ready…" && \
-	until $(COMPOSE) exec -T db pg_isready -U signalos -d signalos >/dev/null 2>&1; do sleep 1; done && \
+	_timeout=30; _elapsed=0; \
+	until $(COMPOSE) exec -T db pg_isready -U signalos -d signalos >/dev/null 2>&1; do \
+	  sleep 1; _elapsed=$$((_elapsed+1)); \
+	  if [ $$_elapsed -ge $$_timeout ]; then echo "ERROR: Postgres did not become ready in $$_timeout seconds" >&2; exit 1; fi; \
+	done && \
 	echo "Postgres ready." && \
 	pnpm install && \
 	pnpm db:generate && \

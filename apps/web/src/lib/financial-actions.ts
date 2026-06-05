@@ -90,6 +90,11 @@ export interface BalanceSheetData {
 }
 
 export async function saveBalanceSheet(data: BalanceSheetData): Promise<{ success: boolean }> {
+  const user = await getCurrentUser()
+  if (!user || (user.role !== 'ADMIN' && user.role !== 'PM' && user.role !== 'ANALYST')) {
+    return { success: false }
+  }
+
   const { companyId, period, ...rest } = data
 
   await db.balanceSheet.upsert({
@@ -125,6 +130,11 @@ export interface CashFlowData {
 }
 
 export async function saveCashFlow(data: CashFlowData): Promise<{ success: boolean }> {
+  const user = await getCurrentUser()
+  if (!user || (user.role !== 'ADMIN' && user.role !== 'PM' && user.role !== 'ANALYST')) {
+    return { success: false }
+  }
+
   const { companyId, period, ...rest } = data
 
   await db.cashFlowStatement.upsert({
@@ -161,6 +171,11 @@ export interface BudgetData {
 }
 
 export async function saveBudget(data: BudgetData): Promise<{ success: boolean }> {
+  const user = await getCurrentUser()
+  if (!user || (user.role !== 'ADMIN' && user.role !== 'PM' && user.role !== 'ANALYST')) {
+    return { success: false }
+  }
+
   const { companyId, year, ...rest } = data
 
   await db.incomeStatementBudget.upsert({

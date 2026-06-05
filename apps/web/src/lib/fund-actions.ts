@@ -95,12 +95,26 @@ export interface CapitalActivityData {
   lpName: string
 }
 
+const VALID_CAPITAL_ACTIVITY_TYPES = new Set(['CAPITAL_CALL', 'DISTRIBUTION', 'MANAGEMENT_FEE', 'OTHER'])
+
 export async function createCapitalActivity(data: CapitalActivityData): Promise<{ success: boolean; id: string }> {
+  const user = await getCurrentUser()
+  if (!user || (user.role !== 'ADMIN' && user.role !== 'PM')) {
+    return { success: false, id: '' }
+  }
+
+  const date = parseSafeDate(data.date)
+  if (!date) return { success: false, id: '' }
+
+  if (!VALID_CAPITAL_ACTIVITY_TYPES.has(data.type)) {
+    return { success: false, id: '' }
+  }
+
   try {
     const activity = await db.capitalActivity.create({
       data: {
         fundId: data.fundId,
-        date: new Date(data.date),
+        date,
         type: data.type as never,
         amount: data.amount,
         description: data.description || null,
@@ -116,7 +130,17 @@ export async function createCapitalActivity(data: CapitalActivityData): Promise<
 }
 
 export async function deleteCapitalActivity(id: string): Promise<{ success: boolean }> {
-  await db.capitalActivity.delete({ where: { id } })
-  revalidatePath('/fund')
-  return { success: true }
+  const user = await getCurrentUser()
+  if (!user || (user.role !== 'ADMIN' && user.role !== 'PM')) {
+    return { success: false }
+  }
+
+  try {
+    await db.capitalActivity.delete({ where: { id } })
+    revalidatePath('/fund')
+    return { success: true }
+  } catch (err) {
+    console.error('[deleteCapitalActivity] failed', err)
+    return { success: false }
+  }
 }

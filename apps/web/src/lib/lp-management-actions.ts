@@ -149,9 +149,10 @@ export async function recordLPPayment(
 ): Promise<{ success: boolean }> {
   const alloc = await db.capitalCallAllocation.findUniqueOrThrow({
     where: { id: allocationId },
-    select: { amountDue: true, callId: true, lpEntityId: true },
+    select: { amountDue: true, amountPaid: true, callId: true, lpEntityId: true },
   })
 
+  const delta = amountPaid - alloc.amountPaid
   const isPaid = amountPaid >= alloc.amountDue
   await db.capitalCallAllocation.update({
     where: { id: allocationId },
@@ -162,14 +163,16 @@ export async function recordLPPayment(
     },
   })
 
-  // Update LP entity capital called
-  await db.lPEntity.update({
-    where: { id: alloc.lpEntityId },
-    data: {
-      capitalCalled: { increment: amountPaid },
-      unfundedCommitment: { decrement: amountPaid },
-    },
-  })
+  // Update LP entity capital called by the delta only (not the full new amount)
+  if (delta !== 0) {
+    await db.lPEntity.update({
+      where: { id: alloc.lpEntityId },
+      data: {
+        capitalCalled: { increment: delta },
+        unfundedCommitment: { decrement: delta },
+      },
+    })
+  }
 
   // Check if entire call is fully paid
   const allocations = await db.capitalCallAllocation.findMany({

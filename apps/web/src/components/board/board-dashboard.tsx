@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { Calendar, CheckCircle2, Star, TrendingUp, Users, FileText, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -47,6 +47,8 @@ interface Props { data: BoardDashboard }
 export function BoardDashboardView({ data }: Props) {
   const { meetings, followOnNotes, valueAdd, valuations } = data
   const [tab, setTab] = useState<Tab>('Board Meetings')
+  const [boardActionPending, startBoardAction] = useTransition()
+  const [vaError, setVaError] = useState<string | null>(null)
 
   // Value-add log form state
   const [showValueAddForm, setShowValueAddForm] = useState(false)
@@ -57,17 +59,24 @@ export function BoardDashboardView({ data }: Props) {
 
   const VALID_VA_TYPES = new Set(['TALENT_INTRO', 'CUSTOMER_BD', 'PR_FACILITATION', 'FUNDRAISE_COACHING', 'CO_INVESTOR_INTRO', 'REGULATORY_GUIDANCE', 'OTHER'])
 
-  async function handleLogValueAdd() {
+  function handleLogValueAdd() {
     if (!vaCompanyId || !vaTitle) return
     if (!VALID_VA_TYPES.has(vaType)) return
-    await logValueAddActivity({
-      companyId: vaCompanyId,
-      type: vaType as 'TALENT_INTRO' | 'CUSTOMER_BD' | 'PR_FACILITATION' | 'FUNDRAISE_COACHING' | 'CO_INVESTOR_INTRO' | 'REGULATORY_GUIDANCE' | 'OTHER',
-      title: vaTitle,
-      outcome: vaOutcome,
+    setVaError(null)
+    startBoardAction(async () => {
+      try {
+        await logValueAddActivity({
+          companyId: vaCompanyId,
+          type: vaType as 'TALENT_INTRO' | 'CUSTOMER_BD' | 'PR_FACILITATION' | 'FUNDRAISE_COACHING' | 'CO_INVESTOR_INTRO' | 'REGULATORY_GUIDANCE' | 'OTHER',
+          title: vaTitle,
+          outcome: vaOutcome,
+        })
+        setShowValueAddForm(false)
+        setVaTitle(''); setVaOutcome('')
+      } catch {
+        setVaError('Failed to log activity.')
+      }
     })
-    setShowValueAddForm(false)
-    setVaTitle(''); setVaOutcome('')
   }
 
   // Unique companies from meetings for value-add form
@@ -225,23 +234,26 @@ export function BoardDashboardView({ data }: Props) {
                     <div className="flex gap-2">
                       {note.status === 'DRAFT' && (
                         <button
-                          onClick={() => submitFollowOnToIC(note.id)}
-                          className="h-7 px-3 rounded-md bg-primary text-primary-foreground text-[11px] font-medium hover:bg-primary/90 transition-colors"
+                          onClick={() => startBoardAction(async () => { await submitFollowOnToIC(note.id) })}
+                          disabled={boardActionPending}
+                          className="h-7 px-3 rounded-md bg-primary text-primary-foreground text-[11px] font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          Submit to IC
+                          {boardActionPending ? 'Submitting…' : 'Submit to IC'}
                         </button>
                       )}
                       {note.status === 'IC_SUBMITTED' && (
                         <div className="flex gap-2">
                           <button
-                            onClick={() => resolveFollowOnNote(note.id, 'APPROVED')}
-                            className="h-7 px-3 rounded-md bg-emerald-600 text-white text-[11px] font-medium hover:bg-emerald-500 transition-colors"
+                            onClick={() => startBoardAction(async () => { await resolveFollowOnNote(note.id, 'APPROVED') })}
+                            disabled={boardActionPending}
+                            className="h-7 px-3 rounded-md bg-emerald-600 text-white text-[11px] font-medium hover:bg-emerald-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             Approve
                           </button>
                           <button
-                            onClick={() => resolveFollowOnNote(note.id, 'DECLINED')}
-                            className="h-7 px-3 rounded-md border border-border text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                            onClick={() => startBoardAction(async () => { await resolveFollowOnNote(note.id, 'DECLINED') })}
+                            disabled={boardActionPending}
+                            className="h-7 px-3 rounded-md border border-border text-[11px] text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             Decline
                           </button>
@@ -337,16 +349,19 @@ export function BoardDashboardView({ data }: Props) {
                   className="w-full text-[12px] bg-background border border-border rounded-md px-3 py-2 text-foreground"
                 />
               </div>
+              {vaError && <p className="text-[11px] text-red-400">{vaError}</p>}
               <div className="flex gap-2">
                 <button
                   onClick={handleLogValueAdd}
-                  className="h-7 px-3 rounded-md bg-primary text-primary-foreground text-[11px] font-medium hover:bg-primary/90 transition-colors"
+                  disabled={boardActionPending}
+                  className="h-7 px-3 rounded-md bg-primary text-primary-foreground text-[11px] font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Log
+                  {boardActionPending ? 'Saving…' : 'Log'}
                 </button>
                 <button
                   onClick={() => setShowValueAddForm(false)}
-                  className="h-7 px-3 rounded-md border border-border text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                  disabled={boardActionPending}
+                  className="h-7 px-3 rounded-md border border-border text-[11px] text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancel
                 </button>
@@ -434,8 +449,9 @@ export function BoardDashboardView({ data }: Props) {
                     </span>
                     {v.status === 'DRAFT' && (
                       <button
-                        onClick={() => approveValuation(v.id)}
-                        className="h-5 px-2 rounded border border-emerald-500/30 text-emerald-400 text-[9px] font-semibold hover:bg-emerald-500/10 transition-colors"
+                        onClick={() => startBoardAction(async () => { await approveValuation(v.id) })}
+                        disabled={boardActionPending}
+                        className="h-5 px-2 rounded border border-emerald-500/30 text-emerald-400 text-[9px] font-semibold hover:bg-emerald-500/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Approve
                       </button>

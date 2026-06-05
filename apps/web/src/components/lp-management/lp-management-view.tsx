@@ -437,7 +437,14 @@ export function LPManagementView({ data }: Props) {
                       <button
                         type="button"
                         onClick={() => {
-                          startTransition(() => { void saveLPACMinutes(meeting.id, 'Minutes recorded.', true) })
+                          setActionError(null)
+                          startTransition(async () => {
+                            try {
+                              await saveLPACMinutes(meeting.id, 'Minutes recorded.', true)
+                            } catch {
+                              setActionError('Failed to record minutes.')
+                            }
+                          })
                         }}
                         className="h-7 px-3 rounded-md border border-border text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                       >

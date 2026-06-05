@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition, useEffect, useRef } from 'react'
+import * as Dialog from '@radix-ui/react-dialog'
 import { Plus, Trash2, Edit3, Link, X, Check } from 'lucide-react'
 import { inviteUser, updateUser, deleteUser, grantLPAccess, type InviteUserData } from '@/lib/auth-actions'
 import { formatDate } from '@fundos/shared'
@@ -75,52 +76,58 @@ function InviteModal({ companies, onClose }: { companies: Company[]; onClose: ()
   }
 
   return (
-    <>
-      <div className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm" onClick={onClose} />
-      <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md bg-background border border-border rounded-xl shadow-2xl">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h3 className="text-[14px] font-semibold">Invite User</h3>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground p-1 rounded"><X size={15} /></button>
-        </div>
-        <div className="p-5 space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Full Name *">
-              <input type="text" value={form.name} onChange={(e) => s('name', e.target.value)} className="input w-full" placeholder="Jane Smith" />
-            </Field>
-            <Field label="Email *">
-              <input type="email" value={form.email} onChange={(e) => s('email', e.target.value)} className="input w-full" placeholder="jane@fund.vc" />
-            </Field>
-            <Field label="Role">
-              <select value={form.role} onChange={(e) => s('role', e.target.value)} className="input w-full">
-                <option value="ANALYST">Analyst</option>
-                <option value="PARTNER">Partner (read-only)</option>
-                <option value="FOUNDER">Founder</option>
-                <option value="LP">LP</option>
-              </select>
-            </Field>
-            <Field label="Temp Password *">
-              <input type="text" value={form.password} onChange={(e) => s('password', e.target.value)} className="input w-full" placeholder="Min 8 characters" />
-            </Field>
+    <Dialog.Root open onOpenChange={(open) => { if (!open) onClose() }}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm" />
+        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md bg-background border border-border rounded-xl shadow-2xl">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+            <Dialog.Title className="text-[14px] font-semibold">Invite User</Dialog.Title>
+            <Dialog.Close asChild>
+              <button aria-label="Close dialog" className="text-muted-foreground hover:text-foreground p-1 rounded"><X size={15} /></button>
+            </Dialog.Close>
           </div>
-          {(form.role === 'FOUNDER') && (
-            <Field label="Portfolio Company (for Founders)">
-              <select value={form.companyId} onChange={(e) => s('companyId', e.target.value)} className="input w-full">
-                <option value="">— not linked yet —</option>
-                {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </Field>
-          )}
-          {error && <p className="text-[12px] text-red-400">{error}</p>}
-          {success && <p className="text-[12px] text-emerald-400">✓ {success}</p>}
-        </div>
-        <div className="px-5 py-3.5 border-t border-border flex justify-end gap-2">
-          <button onClick={onClose} className="h-8 px-4 rounded-lg border border-border text-[12px] text-muted-foreground hover:bg-secondary">Cancel</button>
-          <button onClick={handleSubmit} disabled={pending} className={cn('h-8 px-4 rounded-lg bg-primary text-primary-foreground text-[12px] font-medium', pending ? 'opacity-50' : 'hover:bg-primary/90')}>
-            {pending ? 'Creating…' : 'Create User'}
-          </button>
-        </div>
-      </div>
-    </>
+          <div className="p-5 space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Full Name *">
+                <input type="text" value={form.name} onChange={(e) => s('name', e.target.value)} className="input w-full" placeholder="Jane Smith" />
+              </Field>
+              <Field label="Email *">
+                <input type="email" value={form.email} onChange={(e) => s('email', e.target.value)} className="input w-full" placeholder="jane@fund.vc" />
+              </Field>
+              <Field label="Role">
+                <select value={form.role} onChange={(e) => s('role', e.target.value)} className="input w-full">
+                  <option value="ANALYST">Analyst</option>
+                  <option value="PARTNER">Partner (read-only)</option>
+                  <option value="FOUNDER">Founder</option>
+                  <option value="LP">LP</option>
+                </select>
+              </Field>
+              <Field label="Temp Password *">
+                <input type="password" value={form.password} onChange={(e) => s('password', e.target.value)} className="input w-full" placeholder="Min 8 characters" />
+              </Field>
+            </div>
+            {(form.role === 'FOUNDER') && (
+              <Field label="Portfolio Company (for Founders)">
+                <select value={form.companyId} onChange={(e) => s('companyId', e.target.value)} className="input w-full">
+                  <option value="">— not linked yet —</option>
+                  {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </Field>
+            )}
+            {error && <p className="text-[12px] text-red-400">{error}</p>}
+            {success && <p className="text-[12px] text-emerald-400">✓ {success}</p>}
+          </div>
+          <div className="px-5 py-3.5 border-t border-border flex justify-end gap-2">
+            <Dialog.Close asChild>
+              <button className="h-8 px-4 rounded-lg border border-border text-[12px] text-muted-foreground hover:bg-secondary">Cancel</button>
+            </Dialog.Close>
+            <button onClick={handleSubmit} disabled={pending} className={cn('h-8 px-4 rounded-lg bg-primary text-primary-foreground text-[12px] font-medium', pending ? 'opacity-50' : 'hover:bg-primary/90')}>
+              {pending ? 'Creating…' : 'Create User'}
+            </button>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   )
 }
 
@@ -225,7 +232,10 @@ export function UsersTab({ me, users, companies, lpReports }: Props) {
     setDeleteError('')
     startTransition(async () => {
       try {
-        await deleteUser(id)
+        const response = await deleteUser(id)
+        if (!response.success) {
+          setDeleteError(response.error ?? 'Failed to delete user.')
+        }
       } catch (err) {
         setDeleteError(err instanceof Error ? err.message : 'Failed to delete user.')
       }

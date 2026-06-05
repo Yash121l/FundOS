@@ -133,31 +133,48 @@ export const METRICS_IMPORT_HEADERS = [
   'grossMargin', 'nrr', 'headcount',
 ]
 
-// ── Parse CSV ─────────────────────────────────────────────────
+// ── Parse CSV (RFC 4180-compliant) ────────────────────────────
+
+function parseCsvFields(line: string): string[] {
+  const fields: string[] = []
+  let i = 0
+  while (i <= line.length) {
+    if (line[i] === '"') {
+      // Quoted field: consume until closing quote (handle "" escapes)
+      let field = ''
+      i++
+      while (i < line.length) {
+        if (line[i] === '"') {
+          if (line[i + 1] === '"') { field += '"'; i += 2 }
+          else { i++; break }
+        } else {
+          field += line[i++]
+        }
+      }
+      fields.push(field)
+      if (line[i] === ',') i++
+    } else {
+      // Unquoted field: read until comma or end
+      const start = i
+      while (i < line.length && line[i] !== ',') i++
+      fields.push(line.slice(start, i).trim())
+      if (line[i] === ',') i++
+    }
+    if (i > line.length) break
+  }
+  return fields
+}
 
 export function parseCsv(text: string): Array<Record<string, string>> {
-  const lines = text.trim().split('\n')
+  // Normalize line endings
+  const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim().split('\n')
   if (lines.length < 2) return []
-  const headers = lines[0]!.split(',').map((h) => h.trim().replace(/^"|"$/g, ''))
+  const headers = parseCsvFields(lines[0]!)
 
-  return lines.slice(1).map((line) => {
-    const values: string[] = []
-    let current = ''
-    let inQuotes = false
-
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i]!
-      if (char === '"') {
-        inQuotes = !inQuotes
-      } else if (char === ',' && !inQuotes) {
-        values.push(current.trim())
-        current = ''
-      } else {
-        current += char
-      }
-    }
-    values.push(current.trim())
-
-    return Object.fromEntries(headers.map((h, i) => [h, values[i] ?? '']))
-  })
+  return lines.slice(1)
+    .filter((line) => line.trim() !== '')
+    .map((line) => {
+      const values = parseCsvFields(line)
+      return Object.fromEntries(headers.map((h, i) => [h, values[i] ?? '']))
+    })
 }

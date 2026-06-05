@@ -70,7 +70,7 @@ export function FundTab({ fund }: Props) {
     startTransition(async () => {
       const res = await saveFundProfile({
         name: form.name,
-        vintage: parseInt(form.vintage) || new Date().getFullYear(),
+        vintage: parseInt(form.vintage, 10) || new Date().getFullYear(),
         committedCapital: committed,
         managementFeePct: managementFee / 100,
         carryPct: carry / 100,
@@ -173,7 +173,22 @@ export function FundTab({ fund }: Props) {
               {pending ? 'Saving…' : 'Save Fund Profile'}
             </button>
             {fund && (
-              <button onClick={() => { setEditing(false); setError('') }} className="h-8 px-4 rounded-lg border border-border text-[12px] text-muted-foreground hover:bg-secondary">
+              <button onClick={() => {
+                setForm({
+                  name: fund.name,
+                  vintage: String(fund.vintage),
+                  committedCapital: String(fund.committedCapital),
+                  managementFeePct: String(fund.managementFeePct * 100),
+                  carryPct: String(fund.carryPct * 100),
+                  hurdleRate: String(fund.hurdleRate * 100),
+                  waterfallType: fund.waterfallType,
+                  currency: fund.currency,
+                  investmentPeriodEnd: fmtDate(fund.investmentPeriodEnd ?? null),
+                  fundTermEnd: fmtDate(fund.fundTermEnd ?? null),
+                })
+                setError('')
+                setEditing(false)
+              }} className="h-8 px-4 rounded-lg border border-border text-[12px] text-muted-foreground hover:bg-secondary">
                 Cancel
               </button>
             )}

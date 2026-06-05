@@ -28,7 +28,7 @@
   },
   "pnpm": {
     "overrides": {
-      "jsondiffpatch": "0.7.2",
+      "jsondiffpatch": "0.7.6",
       "postcss": "8.5.10",
       "systeminformation": "5.31.6",
       "ws": "8.20.1",

@@ -728,7 +728,8 @@ async function main() {
 
   // ── Seed users for every role ─────────────────────────────────
   const bcrypt = await import('bcryptjs')
-  const pw = await bcrypt.default.hash('signalos2026', 12)
+  const seedPassword = process.env.SEED_PASSWORD ?? Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
+  const pw = await bcrypt.default.hash(seedPassword, 12)
 
   const seedUsers: Array<{ email: string; name: string; role: string }> = [
     { email: 'admin@signalos.vc',   name: 'Fund Admin',        role: 'ANALYST' },
@@ -836,7 +837,7 @@ async function main() {
       emailVerified: new Date(),
     },
   })
-  console.log(`  ✓ FOUNDER         founder@signalos.vc / signalos2026 (linked to Socure)`)
+  console.log(`  ✓ FOUNDER         founder@signalos.vc (linked to Socure)`)
 
   // ── Trend Findings ───────────────────────────────────────────
   for (const t of TRENDS) {

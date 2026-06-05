@@ -315,7 +315,7 @@ function IncomeStatementForm({ companyId, onClose }: { companyId: string; onClos
         <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-lg max-h-[90vh] overflow-y-auto bg-background border border-border rounded-xl shadow-2xl">
           <div className="flex items-center justify-between px-5 py-4 border-b border-border sticky top-0 bg-background">
             <Dialog.Title className="text-[14px] font-semibold">Log Income Statement</Dialog.Title>
-            <button onClick={onClose} className="text-muted-foreground hover:text-foreground p-1 rounded"><X size={15} /></button>
+            <button aria-label="Close dialog" onClick={onClose} className="text-muted-foreground hover:text-foreground p-1 rounded"><X size={15} /></button>
           </div>
           <div className="p-5 space-y-4">
             <div className="space-y-1.5">
@@ -324,7 +324,7 @@ function IncomeStatementForm({ companyId, onClose }: { companyId: string; onClos
                 {periods.map((p) => <option key={p} value={p}>{p}</option>)}
               </select>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {fields.map(({ k, label }) => (
                 <div key={k} className="space-y-1">
                   <label className="text-[10px] text-muted-foreground">{label}</label>
@@ -385,7 +385,7 @@ function BalanceSheetForm({ companyId, onClose }: { companyId: string; onClose: 
         <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-lg max-h-[90vh] overflow-y-auto bg-background border border-border rounded-xl shadow-2xl">
           <div className="flex items-center justify-between px-5 py-4 border-b border-border sticky top-0 bg-background">
             <Dialog.Title className="text-[14px] font-semibold">Log Balance Sheet</Dialog.Title>
-            <button onClick={onClose} className="text-muted-foreground hover:text-foreground p-1 rounded"><X size={15} /></button>
+            <button aria-label="Close dialog" onClick={onClose} className="text-muted-foreground hover:text-foreground p-1 rounded"><X size={15} /></button>
           </div>
           <div className="p-5 space-y-4">
             <div className="space-y-1.5">
@@ -394,7 +394,7 @@ function BalanceSheetForm({ companyId, onClose }: { companyId: string; onClose: 
                 {periods.map((p) => <option key={p} value={p}>{p}</option>)}
               </select>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {fields.map(({ k, label }) => (
                 <div key={k} className="space-y-1">
                   <label className="text-[10px] text-muted-foreground">{label}</label>
@@ -454,7 +454,7 @@ function CashFlowForm({ companyId, onClose }: { companyId: string; onClose: () =
         <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-lg max-h-[90vh] overflow-y-auto bg-background border border-border rounded-xl shadow-2xl">
           <div className="flex items-center justify-between px-5 py-4 border-b border-border sticky top-0 bg-background">
             <Dialog.Title className="text-[14px] font-semibold">Log Cash Flow Statement</Dialog.Title>
-            <button onClick={onClose} className="text-muted-foreground hover:text-foreground p-1 rounded"><X size={15} /></button>
+            <button aria-label="Close dialog" onClick={onClose} className="text-muted-foreground hover:text-foreground p-1 rounded"><X size={15} /></button>
           </div>
           <div className="p-5 space-y-4">
             <div className="space-y-1.5">
@@ -463,7 +463,7 @@ function CashFlowForm({ companyId, onClose }: { companyId: string; onClose: () =
                 {periods.map((p) => <option key={p} value={p}>{p}</option>)}
               </select>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {fields.map(({ k, label }) => (
                 <div key={k} className="space-y-1">
                   <label className="text-[10px] text-muted-foreground">{label}</label>

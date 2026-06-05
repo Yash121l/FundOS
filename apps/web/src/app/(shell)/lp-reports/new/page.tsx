@@ -14,7 +14,7 @@ export default async function NewLPReportPage() {
   }
 
   const [companies, quarters] = await Promise.all([
-    getCompaniesForReport().catch(() => []),
+    getCompaniesForReport().catch((err) => { console.error('getCompaniesForReport error', err); return [] }),
     Promise.resolve(getQuarterOptions()), // synchronous — Promise.all accepts non-promises
   ])
 

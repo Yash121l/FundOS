@@ -126,7 +126,7 @@ Opens on **http://localhost:3000** (web) and **http://localhost:3001** (API).
 
 ## Demo Accounts
 
-All seeded accounts use password: `signalos2026`
+All seeded accounts use password: `Password123!`
 
 | Role | Email | Access |
 |---|---|---|

@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { generateReport } from '@/lib/lp-report-actions'
+import { trackEvent } from '@/lib/observability'
 import type { CompanyForReport } from '@/lib/lp-reports'
 
 interface ReportConfigFormProps {
@@ -82,6 +83,13 @@ export function ReportConfigForm({ quarters, companies }: ReportConfigFormProps)
           companyIds: [...selectedIds],
           tone,
           lpProfile,
+        })
+        trackEvent('lp_report_generated', {
+          report_id: result.reportId,
+          quarter,
+          company_count: selectedIds.size,
+          tone,
+          lp_tailored: !!lpProfile,
         })
         router.push(`/lp-reports/${result.reportId}`)
       } catch (err) {

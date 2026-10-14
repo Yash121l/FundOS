@@ -4,6 +4,7 @@ import { useState, useTransition, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { getPeriodOptions, suggestNextPeriod, formatMrr, formatCurrency, formatRunway } from '@fundos/shared'
 import { submitFounderMonthlyUpdate, type FounderUpdateFormData } from '@/lib/founder-actions'
+import { trackEvent } from '@/lib/observability'
 import type { FundraisingStatus } from '@fundos/types'
 
 const STEPS = ['Metrics', 'Narrative', 'Review'] as const
@@ -94,7 +95,15 @@ export function FounderUpdateForm({ filedPeriods, prevMetrics }: Props) {
 
     startTransition(async () => {
       const result = await submitFounderMonthlyUpdate(data)
-      if (result.success) setSubmitted(true)
+      if (result.success) {
+        trackEvent('founder_update_submitted', {
+          period,
+          fundraising_status: fundraisingStatus,
+          has_headcount: !!headcount,
+          has_risks: !!risks.trim(),
+        })
+        setSubmitted(true)
+      }
     })
   }
 

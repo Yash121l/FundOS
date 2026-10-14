@@ -155,8 +155,9 @@ TRIGGER_SECRET_KEY=       # enables background jobs
 NEWS_API_KEY=             # enables live market signal ingestion
 EMAIL_WEBHOOK_SECRET=     # required in production for founder email webhook
 SENTRY_DSN=
-NEXT_PUBLIC_POSTHOG_KEY=
 ```
+
+PostHog analytics is on in production builds: the public key lives in `apps/web/.env.production` and the browser sends events through the `/ingest` rewrite in `next.config.ts`. Replays mask all text and inputs, and users are identified by internal id only. Set `NEXT_PUBLIC_POSTHOG_DEV=1` to capture from localhost.
 
 ---
 

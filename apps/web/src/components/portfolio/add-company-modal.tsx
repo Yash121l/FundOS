@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import * as Dialog from '@radix-ui/react-dialog'
 import { X, Plus } from 'lucide-react'
 import { createCompany } from '@/lib/portfolio-actions'
+import { trackEvent } from '@/lib/observability'
 import { cn } from '@/lib/utils'
 
 const SECTORS = ['SAAS', 'FINTECH', 'AI', 'DEVTOOLS', 'CLIMATETECH', 'HEALTHTECH', 'MARKETPLACE', 'INFRASTRUCTURE', 'OTHER']
@@ -45,6 +46,7 @@ export function AddCompanyModal() {
         const parsedYear = form.foundedYear ? parseInt(form.foundedYear, 10) : null
         const foundedYear = parsedYear !== null && Number.isFinite(parsedYear) ? parsedYear : null
         const res = await createCompany({ ...form, foundedYear })
+        trackEvent('company_added', { source: 'manual', count: 1, sector: form.sector, stage: form.stage })
         setOpen(false)
         setForm({ name: '', sector: 'SAAS', stage: 'SEED', country: 'US', website: '', foundedYear: '', description: '', status: 'ACTIVE', healthStatus: 'HEALTHY' })
         router.push(`/portfolio/${res.slug}`)

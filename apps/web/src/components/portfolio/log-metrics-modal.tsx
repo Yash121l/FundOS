@@ -4,6 +4,7 @@ import { useState, useTransition, useEffect, useRef } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { X, BarChart3 } from 'lucide-react'
 import { logMetricSnapshot } from '@/lib/portfolio-actions'
+import { trackEvent } from '@/lib/observability'
 import { getPeriodOptions } from '@fundos/shared'
 import { cn } from '@/lib/utils'
 
@@ -65,6 +66,12 @@ export function LogMetricsModal({ companyId, companyName, open: openProp, onOpen
           nrr: num(form.nrr),
           grr: num(form.grr),
           headcount: num(form.headcount),
+        })
+        trackEvent('metrics_logged', {
+          company_id: companyId,
+          period: form.period,
+          fields_filled: [form.mrr, form.burnRate, form.cashBalance, form.runway, form.grossMargin, form.nrr, form.grr, form.headcount]
+            .filter((v) => v !== '' && v != null).length,
         })
         setSuccess(true)
         closeTimerRef.current = setTimeout(() => {

@@ -1,78 +1,59 @@
-// PostHog observability helpers — browser-side only.
-// Sentry (server-side) is initialised in instrumentation.ts.
-// To enable PostHog: pnpm --filter @fundos/web add posthog-js
-//   NEXT_PUBLIC_POSTHOG_KEY=phc_...
-//   NEXT_PUBLIC_POSTHOG_HOST=https://app.posthog.com
+// PostHog helpers, browser-side only. PostHog is initialised in
+// src/instrumentation-client.ts; when it isn't (localhost, no key) every call
+// here is a no-op because posthog-js ignores calls before init.
+//
+// FundOS is a sensitive app: never pass company names, financial figures,
+// free text, emails or names as event or person properties. Ids, enums and
+// counts only.
+import posthog from 'posthog-js'
 
-interface PostHogInstance {
-  init(key: string, options?: Record<string, unknown>): void
-  capture(event: string, properties?: Record<string, unknown>): void
-  identify(id: string, traits?: Record<string, unknown>): void
-}
-
-// new Function prevents Turbopack from statically resolving the optional package
-// eslint-disable-next-line no-new-func
-const dynamicImport = new Function('m', 'return import(m)') as (m: string) => Promise<{ default: PostHogInstance }>
-
-let cachedPostHog: PostHogInstance | null | undefined = undefined
-
-async function getPostHog(): Promise<PostHogInstance | null> {
-  if (cachedPostHog !== undefined) return cachedPostHog
-  const key = process.env.NEXT_PUBLIC_POSTHOG_KEY
-  const host = process.env.NEXT_PUBLIC_POSTHOG_HOST
-  if (typeof window === 'undefined' || !key) {
-    cachedPostHog = null
-    return null
-  }
-  try {
-    const { default: posthog } = await dynamicImport('posthog-js')
-    posthog.init(key, { api_host: host ?? 'https://app.posthog.com' })
-    cachedPostHog = posthog
-    return posthog
-  } catch {
-    cachedPostHog = null
-    return null
-  }
+function ready(): boolean {
+  return typeof window !== 'undefined' && posthog.__loaded === true
 }
 
 export function captureException(err: unknown, context?: Record<string, unknown>): void {
-  const errorDetails = err instanceof Error
-    ? { name: err.name, message: err.message, stack: err.stack }
-    : { message: String(err) }
-  const payload = { ...errorDetails, ...context }
-
-  void (async () => {
-    try {
-      // Race against a 2s timeout to reduce dropped events during page unload (PostHog slow-load scenario)
-      const ph = await Promise.race([
-        getPostHog(),
-        new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000)),
-      ])
-      ph?.capture('exception', payload)
-    } catch (captureErr) {
-      console.error('[observability] captureException failed', { captureErr, originalErr: err })
-    }
-  })()
+  if (!ready()) return
+  try {
+    posthog.captureException(err, context)
+  } catch (captureErr) {
+    console.error('[observability] captureException failed', { captureErr, originalErr: err })
+  }
 }
 
-export function identifyUser(userId: string, traits?: Record<string, unknown>): void {
-  void (async () => {
-    try {
-      const ph = await getPostHog()
-      ph?.identify(userId, traits)
-    } catch (err) {
-      console.error('[observability] identifyUser failed', { userId, err })
+/** Identify by internal user id only. Role is the only person property. */
+export function identifyUser(userId: string, role?: string): void {
+  if (!ready()) return
+  try {
+    if (posthog.get_distinct_id() !== userId) {
+      posthog.identify(userId, role ? { role } : undefined)
     }
-  })()
+  } catch (err) {
+    console.error('[observability] identifyUser failed', { err })
+  }
 }
 
-export function trackEvent(event: string, properties?: Record<string, unknown>): void {
-  void (async () => {
-    try {
-      const ph = await getPostHog()
-      ph?.capture(event, properties)
-    } catch (err) {
-      console.error('[observability] trackEvent failed', { event, err })
-    }
-  })()
+export function resetUser(): void {
+  if (!ready()) return
+  try {
+    posthog.reset()
+  } catch (err) {
+    console.error('[observability] resetUser failed', { err })
+  }
+}
+
+export type TrackedEvent =
+  | 'founder_update_submitted'
+  | 'company_added'
+  | 'metrics_logged'
+  | 'lp_report_generated'
+  | 'ask_question_answered'
+  | 'user_invited'
+
+export function trackEvent(event: TrackedEvent, properties?: Record<string, string | number | boolean | null>): void {
+  if (!ready()) return
+  try {
+    posthog.capture(event, properties)
+  } catch (err) {
+    console.error('[observability] trackEvent failed', { event, err })
+  }
 }

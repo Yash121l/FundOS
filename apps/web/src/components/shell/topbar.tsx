@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { useCommandPalette } from '@/components/providers/command-palette-provider'
 import { useMobileSidebar } from './mobile-sidebar-context'
 import { signOut } from '@/lib/auth-actions'
+import { resetUser } from '@/lib/observability'
 import type { SessionUser } from '@/lib/session'
 
 
@@ -99,7 +100,7 @@ function UserMenu({ user }: { user: SessionUser }) {
           </Link>
           <button
             role="menuitem"
-            onClick={() => startTransition(async () => { await signOut() })}
+            onClick={() => startTransition(async () => { resetUser(); await signOut() })}
             disabled={pending}
             className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
           >

@@ -8,6 +8,7 @@ import { Sidebar } from '@/components/shell/sidebar'
 import { Topbar } from '@/components/shell/topbar'
 import { MobileSidebarProvider } from '@/components/shell/mobile-sidebar-context'
 import { getSidebarBadges } from '@/lib/dashboard'
+import { PostHogIdentify } from '@/components/providers/posthog-identify'
 
 async function SidebarWithBadges() {
   const badges = await getSidebarBadges().catch(() => ({ updates: 0, trends: 0 }))
@@ -25,6 +26,7 @@ export default async function ShellLayout({ children }: { children: React.ReactN
       if (!pathname.startsWith('/lp-reports')) redirect('/lp-reports')
       return (
         <div className="min-h-screen bg-background">
+          <PostHogIdentify userId={user.id} role={user.role} />
           <main>
             <Suspense fallback={<div className="p-5 text-[12px] text-muted-foreground animate-pulse">Loading…</div>}>
               {children}
@@ -39,6 +41,7 @@ export default async function ShellLayout({ children }: { children: React.ReactN
   return (
     <MobileSidebarProvider>
       <div className="shell-layout-root flex h-screen overflow-hidden bg-background">
+        <PostHogIdentify userId={user.id} role={user.role} />
         <Suspense fallback={<Sidebar />}>
           <SidebarWithBadges />
         </Suspense>

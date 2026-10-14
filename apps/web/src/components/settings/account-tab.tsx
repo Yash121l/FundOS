@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { changePassword, signOut } from '@/lib/auth-actions'
+import { resetUser } from '@/lib/observability'
 import type { SessionUser } from '@/lib/session'
 import { cn } from '@/lib/utils'
 
@@ -124,7 +125,7 @@ export function AccountTab({ me }: Props) {
           Sign out of this device. Your session will be invalidated immediately.
         </p>
         <button
-          onClick={() => startSignOut(async () => { await signOut() })}
+          onClick={() => startSignOut(async () => { resetUser(); await signOut() })}
           disabled={signOutPending}
           className="h-8 px-4 rounded-lg border border-red-500/30 text-red-400 text-[12px] font-medium hover:bg-red-500/10 transition-colors disabled:opacity-50"
         >

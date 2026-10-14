@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
 import { FounderNav } from '@/components/founder/founder-nav'
+import { PostHogIdentify } from '@/components/providers/posthog-identify'
 
 async function FounderLayoutContent({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser()
@@ -24,6 +25,7 @@ async function FounderLayoutContent({ children }: { children: React.ReactNode })
 
   return (
     <div className="min-h-screen bg-background">
+      <PostHogIdentify userId={user.id} role={user.role} />
       <FounderNav />
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
         {children}

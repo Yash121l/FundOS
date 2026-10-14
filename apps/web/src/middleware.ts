@@ -11,6 +11,14 @@ function isPublic(pathname: string) {
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
+  // PostHog proxy (rewritten to us.i.posthog.com in next.config.ts). Public, and
+  // never forward our session cookie to a third party.
+  if (pathname === '/ingest' || pathname.startsWith('/ingest/')) {
+    const proxyHeaders = new Headers(request.headers)
+    proxyHeaders.delete('cookie')
+    return NextResponse.next({ request: { headers: proxyHeaders } })
+  }
+
   // Always allow static assets and Next.js internals
   if (
     pathname.startsWith('/_next') ||

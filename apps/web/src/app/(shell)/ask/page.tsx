@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Send, Sparkles, TrendingDown, DollarSign, Users, BarChart3, Plus, MessageSquare, Trash2, PanelLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { trackEvent } from '@/lib/observability'
 
 interface Message {
   id: string
@@ -209,6 +210,8 @@ export default function AskPage() {
       : makeSessionTitle(question.trim())
 
     let fullText = ''
+    const startedAt = performance.now()
+    let askOk = false
 
     try {
       const response = await fetch('/api/ask', {
@@ -240,6 +243,7 @@ export default function AskPage() {
       setMessages((prev) =>
         prev.map((m) => m.id === assistantId ? { ...m, content: fullText, streaming: false } : m)
       )
+      askOk = true
     } catch (err) {
       console.error('[ask] Failed to stream response:', err)
       fullText = 'Something went wrong. Please try again.'
@@ -253,6 +257,14 @@ export default function AskPage() {
     } finally {
       setIsStreaming(false)
       inputRef.current?.focus()
+      // Never send the question or answer text: lengths and timing only.
+      trackEvent('ask_question_answered', {
+        success: askOk,
+        question_length: question.trim().length,
+        answer_length: fullText.length,
+        duration_ms: Math.round(performance.now() - startedAt),
+        follow_up: messages.length > 0,
+      })
     }
 
     // Persist the final session (with non-streaming messages)

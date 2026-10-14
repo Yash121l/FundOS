@@ -7,6 +7,7 @@ import { inviteUser, updateUser, deleteUser, grantLPAccess, type InviteUserData 
 import { formatDate } from '@fundos/shared'
 import type { SessionUser } from '@/lib/session'
 import { cn } from '@/lib/utils'
+import { trackEvent } from '@/lib/observability'
 
 const ROLE_LABELS: Record<string, string> = {
   ANALYST: 'Analyst', PARTNER: 'Partner', FOUNDER: 'Founder', LP: 'LP',
@@ -70,6 +71,7 @@ function InviteModal({ companies, onClose }: { companies: Company[]; onClose: ()
     startTransition(async () => {
       const res = await inviteUser({ ...form, companyId: form.companyId || undefined })
       if (!res.success) { setError(res.error ?? 'Failed'); return }
+      trackEvent('user_invited', { role: form.role })
       setSuccess('User created successfully.')
       timerRef.current = setTimeout(onClose, 1200)
     })

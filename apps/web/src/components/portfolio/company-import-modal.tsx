@@ -5,6 +5,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { X, Upload, Download, CheckCircle, AlertCircle } from 'lucide-react'
 import { downloadTemplate, parseCsv, COMPANY_IMPORT_HEADERS } from '@/lib/export-utils'
 import { createCompany } from '@/lib/portfolio-actions'
+import { trackEvent } from '@/lib/observability'
 import { cn } from '@/lib/utils'
 
 const SECTORS = ['SAAS', 'FINTECH', 'AI', 'DEVTOOLS', 'CLIMATETECH', 'HEALTHTECH', 'MARKETPLACE', 'INFRASTRUCTURE', 'OTHER']
@@ -87,6 +88,7 @@ export function CompanyImportModal() {
       )
       const ok = settlements.filter((s) => s.status === 'fulfilled' && s.value?.success === true).length
       const failed = settlements.filter((s) => s.status === 'rejected' || (s.status === 'fulfilled' && s.value?.success === false)).length
+      if (ok > 0) trackEvent('company_added', { source: 'csv_import', count: ok, failed })
       setResults({ ok, failed })
       setStep('done')
     })
